@@ -11,6 +11,7 @@
     </style>
 </head>
 <body>
+    <h1>Factory Digital Twin</h1>
     <div id="menu">
         <h3>Add Machine</h3>
         <!-- Prepričaj se, da je atribut id točno takšen -->
@@ -24,6 +25,18 @@
         <input type="file" id="import-layout-file" accept=".json" style="display: none;">
 
     </div>
+    
+    <div id="camera-stream">
+        <h3>Camera Stream</h3>
+        <img src="/camera_stream" alt="Camera Stream" width="640" height="480">
+    </div>
+
+    <div id="mqtt-data">
+        <h3>MQTT Data</h3>
+        <p id="mqtt-topic">Topic: </p>
+        <p id="mqtt-message">Message: </p>
+    </div>
+
     <!-- Tukaj se bo izrisala 3D scena -->
     <canvas id="webgl"></canvas>
 
@@ -33,12 +46,24 @@
         "imports": {
             "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
             "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
-            "mqtt": "https://unpkg.com/mqtt@5.3.4/dist/mqtt.esm.js"
+            "mqtt": "https://unpkg.com/mqtt@5.3.4/dist/mqtt.esm.js",
+            "socket.io-client": "https://cdn.socket.io/4.7.4/socket.io.esm.min.js"
         }
     }
     </script>
 
     <!-- Vaša aplikacijska skripta -->
     <script type="module" src="main.js"></script>
+    <script>
+        // Client-side JavaScript to handle MQTT data and camera stream
+        import { io } from "socket.io-client";
+
+        const socket = io();
+
+        socket.on('mqtt_message', (data) => {
+            document.getElementById('mqtt-topic').innerText = `Topic: ${data.topic}`;
+            document.getElementById('mqtt-message').innerText = `Message: ${data.message}`;
+        });
+    </script>
 </body>
 </html>
