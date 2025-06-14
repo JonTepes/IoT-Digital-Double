@@ -3,11 +3,12 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { DragControls } from 'three/addons/controls/DragControls.js'; // Uvoz DragControls
 import { FactoryManager } from './FactoryManager.js'; // Uvoz upravitelja
 import { factoryLayout } from './FactoryLayout.js'; // Uvoz konfiguracije postavitve
+import { mqttBrokerUrl } from './config.js'; // Import the MQTT broker URL
 
 console.log("Script starting...");
 
 // --- Globalne spremenljivke ---
-const mqttBrokerUrl = 'ws://86.61.17.115:9001';
+// mqttBrokerUrl is now imported from config.js
 
 // --- Nastavitev scene ---
 const scene = new THREE.Scene();
