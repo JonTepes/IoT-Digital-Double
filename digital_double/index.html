@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Single Block MQTT Test</title> <!-- Posodobljen naslov -->
+    <style>
+        /* Osnovni CSS za odstranitev privzetih robov/drsnih trakov */
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <div id="menu">
+        <h3>Add Machine</h3>
+        <!-- Prepričaj se, da je atribut id točno takšen -->
+        <button id="add-conveyor">Dodaj tekoči trak</button>
+        <!-- Prepričaj se, da je atribut id točno takšen -->
+        <button id="add-crane">Dodaj roko</button>
+        
+        <button id="export-layout-btn">Export Layout (JSON)</button>
+        <button id="import-layout-btn">Import Layout (JSON)</button>
+        
+        <input type="file" id="import-layout-file" accept=".json" style="display: none;">
+
+    </div>
+    <!-- Tukaj se bo izrisala 3D scena -->
+    <canvas id="webgl"></canvas>
+
+    <!-- Popravljen zemljevid uvozov (Import Map) -->
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/",
+            "mqtt": "https://unpkg.com/mqtt@5.3.4/dist/mqtt.esm.js"
+        }
+    }
+    </script>
+
+    <!-- Vaša aplikacijska skripta -->
+    <script type="module" src="main.js"></script>
+</body>
+</html>
