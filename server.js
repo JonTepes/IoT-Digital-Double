@@ -19,7 +19,7 @@ app.use(express.static(path.join(__dirname, 'digital_double')));
 // MJPG stream proxy
 app.get('/camera_stream', async (req, res) => {
   // TODO: Change to http://iotlinija.ddns.net:8081/?action=stream if needed
-  const streamUrl = 'http://iotlinija.ddns.net:8081/?action=stream';
+  const streamUrl = 'http://localhost:8081/?action=stream';
   try {
     const response = await fetch(streamUrl);
 

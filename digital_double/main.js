@@ -108,7 +108,6 @@ let clickOffsetFromRoot_world = new THREE.Vector3(); // Svetovni odmik od izvora
 let conveyorCount = 0; // Števec za unikatna imena tekočih trakov
 let dragControlsInstanceId = 0; // Števec za instance DragControls za odpravljanje napak
 let craneCount = 0;    // Števec za unikatna imena dvigal
-let boxHelpers = []; // Za shranjevanje BoxHelpers za posodabljanje
 
 // Global MQTT client instance
 let mqttClient = null;
@@ -591,12 +590,6 @@ async function promptForTopicsAndAdd(type) {
         // Vedno dodaj model najvišje ravni na seznam vlečljivih objektov
         draggableObjects.unshift(newMachineInstance.model); // Dodaj na začetek
 
-        // --- DODAJ POMOČNIKA ZA OMEJEVALNO POLJE ZA ODPRAVLJANJE NAPAK ---
-        const boxColor = (type === 'Crane') ? 0x0000ff : 0xff0000; // Modra za dvigalo, rdeča za ostale
-        const boxHelper = new THREE.BoxHelper(newMachineInstance.model, boxColor);
-        scene.add(boxHelper);
-        boxHelpers.push(boxHelper); // Shrani za posodabljanje v zanki animacije
-        // --- KONEC POMOČNIKA ZA OMEJEVALNO POLJE ---
 
         // Ponovno inicializiraj DragControls, da zagotoviš prepoznavanje novega objekta
         setupDragControls();
@@ -683,9 +676,6 @@ async function handleJsonFileImport(event) {
                 dragControlsInstance.dispose();
                 dragControlsInstance = null;
             }
-            // Počisti pomožnike za polja iz scene in polja
-            boxHelpers.forEach(helper => scene.remove(helper));
-            boxHelpers.length = 0;
 
             await factoryManager.reset(); // Ponastavi stroje, topicMap in MQTT naročnine
 
@@ -733,10 +723,6 @@ function animate() {
     controls.update();
     factoryManager.update(deltaTime); // Posodobi stroje (za potencialne animacije)
 
-    // Update BoxHelpers
-    for (const helper of boxHelpers) {
-        helper.update();
-    }
     renderer.render(scene, camera);
 }
 

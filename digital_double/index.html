@@ -49,24 +49,28 @@
             margin-top: 0;
             color: #0056b3;
         }
+        #menu {
+            display: flex;
+            flex-direction: column; /* Stack items vertically */
+            gap: 10px; /* Space between buttons */
+        }
         #menu button {
-            display: block;
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 10px;
+            display: block; /* Make buttons block-level to stack */
+            width: 100%; /* Take full width */
+            padding: 8px 12px; /* Match padding of other buttons */
             background-color: #007bff;
             color: white;
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            font-size: 16px;
+            font-size: 16px; /* Match font size of other buttons */
         }
         #menu button:hover {
             background-color: #0056b3;
         }
         #camera-stream img {
             max-width: 100%;
-            height: auto;
+            height: 360px;
             border: 1px solid #ccc;
             box-sizing: border-box; /* Include padding and border in the element's total width and height */
         }
@@ -91,11 +95,6 @@
                 <img src="/camera_stream" alt="Camera Stream">
             </div>
 
-            <div id="mqtt-data">
-                <h3>MQTT Data</h3>
-                <p id="mqtt-topic">Topic: </p>
-                <p id="mqtt-message">Message: </p>
-            </div>
 
             <div id="menu">
                 <h3>Add Machine</h3>
@@ -164,16 +163,5 @@
 
     <!-- Vaša aplikacijska skripta -->
     <script type="module" src="main.js"></script>
-    <script>
-        // Client-side JavaScript to handle MQTT data and camera stream
-        import { io } from "socket.io-client";
-
-        const socket = io();
-
-        socket.on('mqtt_message', (data) => {
-            document.getElementById('mqtt-topic').innerText = `Topic: ${data.topic}`;
-            document.getElementById('mqtt-message').innerText = `Message: ${data.message}`;
-        });
-    </script>
 </body>
 </html>
