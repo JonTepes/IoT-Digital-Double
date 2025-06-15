@@ -12,7 +12,7 @@ export class BaseMachine {
         this.name = config.name;
     }
 
-    async loadModel(returnFullGltf = false) { // Dodaj izbirni parameter
+async loadModel(returnFullGltf = false) { // Dodaj izbirni parameter za vrnitev celotnega GLTF objekta
         return new Promise((resolve, reject) => {
             console.log(`Loading model for ${this.name}: ${this.config.modelPath}`);
             loader.load(
@@ -23,10 +23,10 @@ export class BaseMachine {
 
                     // Calculate world position using gridPos or initialGridPos
                     const gridPos = this.config.gridPos || this.config.initialGridPos || { x: 0, y: 0 };
-                    const initialWorldPos = this.gridToWorld(gridPos.x, gridPos.y, 0); // Zaenkrat predpostavimo višino 0
+                    const initialWorldPos = this.gridToWorld(gridPos.x, gridPos.y, 0); // Predpostavimo višino 0
                     this.model.position.copy(initialWorldPos);
 
-                    // Uporabi rotacijo, če je določena
+                    // Uporabi rotacijo modela, če je določena v konfiguraciji
                     if (this.config.rotationY !== undefined) {
                         this.model.rotation.y = this.config.rotationY;
                     }
@@ -39,7 +39,7 @@ export class BaseMachine {
                         resolve(this.model); // Privzeto razreši samo z objektnim prizorom
                     }
                 },
-                undefined, // Povratni klic za napredek (izbirno)
+                undefined, // Povratni klic za napredek nalaganja (izbirno)
                 (error) => {
                     console.error(`An error happened loading model for ${this.name}:`, error);
                     reject(error); // Zavrni obljubo v primeru napake
@@ -48,12 +48,12 @@ export class BaseMachine {
         });
     }
 
-    // Osnovna metoda handleMessage - podrazredi jo lahko prepišejo
+    // Osnovna metoda handleMessage - podrazredi jo lahko prepišejo za obravnavo MQTT sporočil
     handleMessage(topic, message) {
-        // Privzeto obnašanje: zabeleži neobravnavano sporočilo. Podrazredi naj to prepišejo.
+        // Privzeto obnašanje: ne naredi ničesar. Podrazredi naj to prepišejo za specifično logiko.
     }
 
-    // Osnovna metoda update - lahko se prepiše za animacije
+    // Osnovna metoda update - podrazredi jo lahko prepišejo za animacije ali posodobitve stanja
     update(deltaTime) {
         // Privzeto: ne naredi ničesar
     }

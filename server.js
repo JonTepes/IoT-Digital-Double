@@ -1,4 +1,3 @@
-// TODO: Remember to install dependencies: npm install express socket.io mqtt node-fetch@2
 const express = require('express');
 const { createServer } = require("http");
 const { Server } = require("socket.io");
@@ -58,6 +57,34 @@ io.on("connection", (socket) => {
   console.log('a user connected');
   socket.on("disconnect", () => {
     console.log("user disconnected");
+  });
+
+  socket.on('publish_mqtt', (data) => {
+    const { topic, message } = data;
+    console.log(`Received publish request from client for topic ${topic}: ${message}`);
+    mqttClient.publish(topic, message);
+  });
+
+  socket.on('subscribe_mqtt', (topic) => {
+    console.log(`Client requested subscription to topic: ${topic}`);
+    mqttClient.subscribe(topic, (err) => {
+      if (err) {
+        console.error(`Failed to subscribe to ${topic} for client:`, err);
+      } else {
+        console.log(`Successfully subscribed to ${topic} for client.`);
+      }
+    });
+  });
+
+  socket.on('unsubscribe_mqtt', (topic) => {
+    console.log(`Client requested unsubscription from topic: ${topic}`);
+    mqttClient.unsubscribe(topic, (err) => {
+      if (err) {
+        console.error(`Failed to unsubscribe from ${topic} for client:`, err);
+      } else {
+        console.log(`Successfully unsubscribed from ${topic} for client.`);
+      }
+    });
   });
 });
 

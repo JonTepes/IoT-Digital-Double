@@ -1,73 +1,70 @@
-import mqtt from 'mqtt';
 import { Conveyor } from './Conveyor.js';
 import { Crane } from './Crane.js';
 import { Workpiece } from './Workpiece.js';
 
 export class FactoryManager {
-    constructor(scene, gridToWorld, layout, mqttBrokerUrl, unitsPerCm) { // Dodaj unitsPerCm
+    constructor(scene, gridToWorld, layout, unitsPerCm) { // Removed mqttBrokerUrl
         this.scene = scene;
         this.gridToWorld = gridToWorld;
         this.layout = layout;
-        this.mqttBrokerUrl = mqttBrokerUrl;
-        this.unitsPerCm = unitsPerCm; // Shrani faktor merila
+        this.unitsPerCm = unitsPerCm; // Shrani faktor pretvorbe enot
 
-        this.machines = new Map(); // Hrani instance strojev { ime: instanca }
+        this.machines = new Map(); // Shrani instance strojev { ime: instanca }
         this.topicMap = new Map(); // Mapira MQTT teme na instanco stroja, ki naj jih obravnava { tema: instanca }
-        this.mqttClient = null;
+        // this.mqttClient is no longer needed here as communication is proxied via Socket.IO
     }
 
-    async initialize() {
-        // Takoj se poveži z MQTT, tudi če še ni prisotnih strojev
-        this.connectToMqtt();
+    async initialize(socket) { // Accept socket instance
+        this.socket = socket; // Store socket instance
+        // No direct MQTT connection needed here anymore
     }
 
-    // Metoda za dinamično dodajanje posameznega stroja
+    // Metoda za dinamično dodajanje posameznega stroja v sceno
     async addMachine(config) {
         let machineInstance = this.createMachineInstance(config);
 
         if (!machineInstance) {
-            console.error(`Failed to create instance for ${config.name}`);
+            console.error(`Spodletelo ustvarjanje instance za ${config.name}`);
             return null;
         }
         try {
-            await machineInstance.loadModel(); // Naloži model
-            this.machines.set(config.name, machineInstance); // Dodaj na seznam upravitelja
-            // Izbirno: Posodobi mapo tem in se naroči, če so potrebne dinamične teme
-            this.updateTopicMapForMachine(machineInstance);
-            return machineInstance; // Vrni instanco (ali njen model)
+            await machineInstance.loadModel(); // Naloži 3D model stroja
+            this.machines.set(config.name, machineInstance); // Dodaj instanco na seznam upravitelja
+            this.updateTopicMapForMachine(machineInstance); // Posodobi mapo tem in se naroči na MQTT teme
+            return machineInstance; // Vrni ustvarjeno instanco stroja
         } catch (error) {
-            console.error(`Failed to load model for ${config.name}:`, error);
+            console.error(`Spodletelo nalaganje modela za ${config.name}:`, error);
             return null;
         }
     }
 
+    // Metoda za ustvarjanje in nalaganje stroja (uporablja se pri inicializaciji iz postavitve)
     async createAndLoadMachine(config) {
         let machineInstance;
 
-        // Tovarniški vzorec za ustvarjanje instanc glede na tip
+        // Tovarniški vzorec za ustvarjanje instanc strojev glede na tip
         switch (config.type) {
             case 'Conveyor':
                 machineInstance = new Conveyor(config, this.gridToWorld, this.scene);
                 break;
             case 'Crane':
-                machineInstance = new Crane(config, this.gridToWorld, this.scene, this.unitsPerCm); // Posreduj merilo
+                machineInstance = new Crane(config, this.gridToWorld, this.scene, this.unitsPerCm); // Posreduj faktor merila
                 break;
             case 'Workpiece':
                 machineInstance = new Workpiece(config, this.gridToWorld, this.scene);
                 break;
             default:
-                console.warn(`Unknown machine type: ${config.type}`);
+                console.warn(`Neznan tip stroja: ${config.type}`);
                 return; // Preskoči neznane tipe
         }
 
         if (machineInstance) {
             this.machines.set(config.name, machineInstance);
-            // Naloži model (vrne obljubo)
-            await machineInstance.loadModel(); // Počakaj, da se ta specifični model naloži
+            await machineInstance.loadModel(); // Počakaj, da se model naloži
         }
     }
 
-    // Ločena logika ustvarjanja instanc
+    // Ločena logika za ustvarjanje instance stroja (uporablja se pri dinamičnem dodajanju)
     createMachineInstance(config) {
          let machineInstance;
          switch (config.type) {
@@ -75,31 +72,31 @@ export class FactoryManager {
                 machineInstance = new Conveyor(config, this.gridToWorld, this.scene);
                 break;
             case 'Crane':
-                machineInstance = new Crane(config, this.gridToWorld, this.scene, this.unitsPerCm); // Posreduj merilo
+                machineInstance = new Crane(config, this.gridToWorld, this.scene, this.unitsPerCm); // Posreduj faktor merila
                 break;
-            case 'Workpiece': // Ohrani logiko za obdelovance, če je potrebna, ali jo odstrani, če se ne dodajajo preko menija
+            case 'Workpiece':
                 machineInstance = new Workpiece(config, this.gridToWorld, this.scene);
                 break;
             default:
-                console.warn(`Unknown machine type: ${config.type}`);
+                console.warn(`Neznan tip stroja: ${config.type}`);
                 return null;
         }
         return machineInstance;
     }
 
+    // Zgradi mapo MQTT tem, ki jih obravnavajo posamezni stroji
     buildTopicMap() {
-         // Mapiraj teme, definirane v postavitvi, na pravilno instanco stroja
          for (const config of this.layout) {
             const machineInstance = this.machines.get(config.name);
             if (!machineInstance) continue;
 
-            // Mapiraj splošne teme, definirane v 'topics'
+            // Mapiraj splošne teme, definirane v 'topics' konfiguraciji stroja
             if (config.topics) {
                 for (const key in config.topics) {
                     this.addTopicMapping(config.topics[key], machineInstance);
                 }
             }
-            // Mapiraj specifične nadzorne teme (kot za Workpiece)
+            // Mapiraj specifične nadzorne teme (npr. za obdelovance)
             if (config.controlTopics) {
                  for (const key in config.controlTopics) {
                     this.addTopicMapping(config.controlTopics[key], machineInstance);
@@ -108,7 +105,7 @@ export class FactoryManager {
         }
     }
 
-    // Izbirno: Pokliči to, če dinamično dodajanje strojev zahteva nove MQTT naročnine
+    // Posodobi mapo tem za določen stroj in se naroči na nove MQTT teme
     updateTopicMapForMachine(machineInstance) {
         const config = machineInstance.config;
         if (!config) return;
@@ -120,7 +117,7 @@ export class FactoryManager {
                 topicsToSubscribe.push(config.topics[key]);
             }
         }
-        // Also subscribe to control topics if they exist, as the machine might need to react to its own commands
+        // Naroči se tudi na kontrolne teme, če obstajajo, saj se bo stroj morda moral odzvati na lastne ukaze
         if (config.controlTopics) {
             for (const key in config.controlTopics) {
                 this.addTopicMapping(config.controlTopics[key], machineInstance);
@@ -130,78 +127,47 @@ export class FactoryManager {
             }
         }
 
-        // Naroči se na nove teme, če je klient povezan
-        if (this.mqttClient && this.mqttClient.connected && topicsToSubscribe.length > 0) {
-            this.mqttClient.subscribe(topicsToSubscribe, (err) => {
-                if (err) {
-                    console.error(`Failed to subscribe to new topics for ${config.name}:`, err);
-                }
+        // Emit subscription requests to the server
+        if (this.socket && this.socket.connected && topicsToSubscribe.length > 0) {
+            topicsToSubscribe.forEach(topic => {
+                this.socket.emit('subscribe_mqtt', topic);
             });
         }
     }
 
+    // Doda preslikavo MQTT teme na instanco stroja
      addTopicMapping(topic, instance) {
         if (this.topicMap.has(topic) && this.topicMap.get(topic) !== instance) {
-            // Dovoli več komponentam, da poslušajo isto temo, če je potrebno,
-            // vendar zabeleži opozorilo, če se zdi nenamerno (mapirane različne instance)
-            console.warn(`MQTT topic collision: ${topic} is mapped to multiple different instances!`);
+            // Opozorilo, če je tema že preslikana na drugo instanco
+            console.warn(`Trk MQTT teme: ${topic} je preslikana na več različnih instanc!`);
         }
-        // Mapiraj temo na instanco, ki naj jo obravnava
-        this.topicMap.set(topic, instance);
+        this.topicMap.set(topic, instance); // Preslikaj temo na instanco
     }
 
-    connectToMqtt() {
-        if (this.mqttClient) {
-            return; // Prepreči večkratne povezave
+    // Handle incoming MQTT messages from the server via Socket.IO
+    handleMqttMessage(topic, payloadString) {
+        const machineInstance = this.topicMap.get(topic); // Poišči instanco, preslikano na to temo
+        if (machineInstance && typeof machineInstance.handleMessage === 'function') {
+             try {
+                const message = JSON.parse(payloadString);
+                machineInstance.handleMessage(topic, message); // Delegiraj obravnavo sporočila
+            } catch (e) {
+                console.error(`Spodletelo razčlenjevanje MQTT sporočila na temi ${topic}:`, e, `Vsebina: ${payloadString}`);
+            }
+        } else {
+            // console.warn(`Prejeto sporočilo na nepreslikani temi: ${topic}`); // Lahko je preveč hrupno
         }
-        this.mqttClient = mqtt.connect(this.mqttBrokerUrl);
-
-        this.mqttClient.on('connect', () => {
-            // Naroči se na teme, ki so *trenutno* v mapi (lahko je na začetku prazna)
-            const currentTopics = Array.from(this.topicMap.keys());
-            if (currentTopics.length > 0) {
-                this.mqttClient.subscribe(currentTopics, (err) => {
-                    if (err) console.error(`Failed initial subscription:`, err);
-                });
-            }
-        });
-
-        this.mqttClient.on('message', (topic, payload) => {
-            const machineInstance = this.topicMap.get(topic); // Poišči instanco, mapirano na to temo
-            if (machineInstance && typeof machineInstance.handleMessage === 'function') {
-                 try {
-                    const message = JSON.parse(payload.toString());
-                    machineInstance.handleMessage(topic, message); // Delegiraj
-                } catch (e) {
-                    console.error(`Failed to parse MQTT message on topic ${topic}:`, e, `Payload: ${payload.toString()}`);
-                }
-            } else {
-                // console.warn(`Received message on unmapped topic: ${topic}`); // Can be noisy
-            }
-        });
-
-        this.mqttClient.on('error', (err) => console.error('MQTT Connection Error:', err));
     }
 
+    // Ponastavi stanje upravitelja tovarne
     async reset() {
-        // Odjavi se od vseh trenutnih tem
-        if (this.mqttClient && this.mqttClient.connected) {
-            const topics = Array.from(this.topicMap.keys());
-            if (topics.length > 0) {
-                // Odjava MQTT je lahko asinhrona, vendar knjižnica morda ne vrne obljube.
-                // Nadaljevali bomo ob predpostavki, da je dovolj hitra, ali pa bomo obravnavali napake.
-                try {
-                    this.mqttClient.unsubscribe(topics, (err) => {
-                        if (err) {
-                            console.error("Error unsubscribing from topics:", err);
-                        }
-                    });
-                } catch (e) {
-                    console.error("Exception during unsubscribe:", e);
-                }
-            }
+        // Emit unsubscribe requests to the server for all current topics
+        if (this.socket && this.socket.connected) {
+            Array.from(this.topicMap.keys()).forEach(topic => {
+                this.socket.emit('unsubscribe_mqtt', topic);
+            });
         }
-        this.machines.clear();
+        this.machines.clear(); // Počisti seznam strojev
         this.topicMap.clear(); // Počisti mapo tem po odjavi
     }
 
@@ -209,10 +175,11 @@ export class FactoryManager {
         return this.machines.get(name);
     }
 
+    // Posodobi stanje vseh strojev v tovarni
     update(deltaTime) {
         for (const machine of this.machines.values()) {
             if (typeof machine.update === 'function') {
-                machine.update(deltaTime);
+                machine.update(deltaTime); // Pokliči metodo update na vsakem stroju
             }
         }
     }
