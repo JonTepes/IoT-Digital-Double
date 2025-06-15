@@ -29,6 +29,63 @@
             width: 100%;
             height: 100%;
         }
+        #machine-controls { /* New style for machine controls inside Three.js container */
+            position: absolute;
+            top: 10px; /* Adjust as needed */
+            left: 10px; /* Adjust as needed */
+            background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent background */
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 10; /* Ensure it's above the canvas */
+            max-width: 300px; /* Limit width */
+            display: none; /* Hidden by default, shown by JS */
+            flex-direction: column; /* Arrange content vertically */
+            gap: 10px; /* Space between elements */
+        }
+        #machine-controls h3 {
+            margin-top: 0;
+            color: #0056b3;
+            text-align: center;
+        }
+        .machine-control-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .machine-control-panel h4 {
+            margin-top: 0;
+            margin-bottom: 5px;
+            color: #007bff;
+        }
+        .machine-control-panel div { /* For motor sliders */
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .slider-value-display {
+            min-width: 50px; /* Adjust as needed to accommodate max possible number width */
+            text-align: right;
+        }
+        .machine-control-panel label {
+            min-width: 80px; /* Align labels */
+        }
+        .machine-control-panel input[type="range"] {
+            flex-grow: 1;
+        }
+        .machine-control-panel button {
+            padding: 5px 10px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        .machine-control-panel button:hover {
+            background-color: #218838;
+        }
         #sidebar {
             flex: 1; /* Sidebar takes 1 part of space */
             background-color: #f0f0f0;
@@ -107,47 +164,50 @@
                 <input type="file" id="import-layout-file" accept=".json" style="display: none;">
             </div>
 
-            <div id="machine-controls" style="display: none;">
-                <h3>Machine Controls</h3>
-                <div id="controls-content">
-                    <!-- Dynamic controls will be loaded here -->
-                </div>
             </div>
-
-            <!-- Templates for machine controls -->
-            <template id="conveyor-control-template">
-                <div class="machine-control-panel" data-machine-name="">
-                    <h4>Conveyor: <span class="machine-name-display"></span></h4>
-                    <label for="conveyor-slider">Position (cm):</label>
-                    <input type="range" class="conveyor-slider" min="-10" max="10" value="0" step="0.1">
-                    <span class="conveyor-position-display">0.0 cm</span>
-                    <button class="conveyor-move-btn">Move Belt</button>
-                </div>
-            </template>
-
-            <template id="crane-control-template">
-                <div class="machine-control-panel" data-machine-name="">
-                    <h4>Crane: <span class="machine-name-display"></span></h4>
-                    <div>
-                        <label for="crane-m0-slider">Motor 0 (degrees):</label>
-                        <input type="range" class="crane-m0-slider" min="-180" max="180" value="0" step="1">
-                        <span class="crane-m0-display">0°</span>
-                    </div>
-                    <div>
-                        <label for="crane-m1-slider">Motor 1 (cm):</label>
-                        <input type="range" class="crane-m1-slider" min="0" max="17.5" value="0" step="0.1">
-                        <span class="crane-m1-display">0.0 cm</span>
-                    </div>
-                    <div>
-                        <label for="crane-m2-slider">Motor 2 (cm):</label>
-                        <input type="range" class="crane-m2-slider" min="0" max="8.5" value="0" step="0.1">
-                        <span class="crane-m2-display">0.0 cm</span>
-                    </div>
-                    <button class="crane-move-btn">Move All Motors</button>
-                </div>
-            </template>
         </div>
     </div>
+
+    <!-- Machine Controls panel - Moved inside threejs-container -->
+    <div id="machine-controls">
+        <h3>Machine Controls</h3>
+        <div id="controls-content">
+            <!-- Dynamic controls will be loaded here -->
+        </div>
+    </div>
+
+    <!-- Templates for machine controls -->
+    <template id="conveyor-control-template">
+        <div class="machine-control-panel" data-machine-name="">
+            <h4>Conveyor: <span class="machine-name-display"></span></h4>
+            <label for="conveyor-slider">Position (cm):</label>
+            <input type="range" class="conveyor-slider" min="-10" max="10" value="0" step="0.1">
+            <span class="conveyor-position-display slider-value-display">0.0 cm</span>
+            <button class="conveyor-move-btn">Move Belt</button>
+        </div>
+    </template>
+
+    <template id="crane-control-template">
+        <div class="machine-control-panel" data-machine-name="">
+            <h4>Crane: <span class="machine-name-display"></span></h4>
+            <div>
+                <label for="crane-m0-slider">Motor 0 (degrees):</label>
+                <input type="range" class="crane-m0-slider" min="-180" max="180" value="0" step="1">
+                <span class="crane-m0-display slider-value-display">0°</span>
+            </div>
+            <div>
+                <label for="crane-m1-slider">Motor 1 (cm):</label>
+                <input type="range" class="crane-m1-slider" min="0" max="17.5" value="0" step="0.1">
+                <span class="crane-m1-display slider-value-display">0.0 cm</span>
+            </div>
+            <div>
+                <label for="crane-m2-slider">Motor 2 (cm):</label>
+                <input type="range" class="crane-m2-slider" min="0" max="8.5" value="0" step="0.1">
+                <span class="crane-m2-display slider-value-display">0.0 cm</span>
+            </div>
+            <button class="crane-move-btn">Move All Motors</button>
+        </div>
+    </template>
 
     <!-- Popravljen zemljevid uvozov (Import Map) -->
     <script type="importmap">

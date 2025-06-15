@@ -49,7 +49,7 @@ bool g_firstAdcReading = true;
 float g_controlPotAngleDegrees = 0.0f;
 float g_reportedPotAngleDegrees = 0.0f;
 
-const float ADC_SMOOTHING_ALPHA = 0.2f;
+const float ADC_SMOOTHING_ALPHA = 0.05f;
 const float ANGLE_QUANTIZATION_STEP = 2.5f;
 
 float g_targetPotAngleDegrees = 0.0f;
