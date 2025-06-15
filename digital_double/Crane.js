@@ -84,6 +84,6 @@ export class Crane extends BaseMachine {
                         console.warn(`Crane ${this.name}: Received message for unknown motor index ${motorIndex}`);
                 }
             }
-        }
     }
+}
 }

@@ -203,36 +203,52 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     String message = String((char*)payload);
     message.toUpperCase();
     if (String(topic) == commandTopic) {
-        int motorIndex = -1;
-        float parsedTargetAngle = 0.0;
-        if (message.startsWith("MOVE ")) {
-            int firstSpace = message.indexOf(' ');
-            int secondSpace = message.indexOf(' ', firstSpace + 1);
-            if (firstSpace != -1 && secondSpace != -1) {
-                motorIndex = message.substring(firstSpace + 1, secondSpace).toInt();
-                parsedTargetAngle = message.substring(secondSpace + 1).toFloat();
-                if (motorIndex == MOTOR_ID) {
-                    g_targetPotAngleDegrees = parsedTargetAngle;
-                    g_controlLoopActive = true;
-                    g_newTargetForFastApproach = true;
-                    publishMotorStates(); // Publish updated state immediately
-                }
+        StaticJsonDocument<256> doc; // Increased size for JSON parsing
+        DeserializationError error = deserializeJson(doc, payload, length);
+
+        if (error) {
+            Serial.print(F("deserializeJson() failed: "));
+            Serial.println(error.f_str());
+            // Fallback to old string parsing for non-JSON commands
+            if (message.startsWith("STOP ")) {
+                 String indexStr = message.substring(5);
+                 indexStr.trim();
+                 if (indexStr.length() > 0) {
+                    int motorIndex = indexStr.toInt();
+                    if (motorIndex == MOTOR_ID) {
+                        g_controlLoopActive = false;
+                        g_currentControlState = IDLE_STATE;
+                        stepper0.stop();
+                        stepper0.moveTo(stepper0.currentPosition());
+                        publishMotorStates(); // Publish updated state immediately
+                    }
+                 }
+            } else if (message == "GETPOS") {
+                publishMotorStates(); // Publish current consolidated state
+            } else {
+                Serial.println("Unknown command format received.");
             }
-        } else if (message.startsWith("STOP ")) {
-             String indexStr = message.substring(5);
-             indexStr.trim();
-             if (indexStr.length() > 0) {
-                motorIndex = indexStr.toInt();
-                if (motorIndex == MOTOR_ID) {
-                    g_controlLoopActive = false;
-                    g_currentControlState = IDLE_STATE;
-                    stepper0.stop();
-                    stepper0.moveTo(stepper0.currentPosition());
-                    publishMotorStates(); // Publish updated state immediately
+        } else {
+            // JSON parsing successful
+            const char* command = doc["command"];
+            if (command && String(command) == "move_all") {
+                JsonArray motors = doc["motors"].as<JsonArray>();
+                if (motors) {
+                    for (JsonObject motor : motors) {
+                        int motorId = motor["id"];
+                        float pos = motor["pos"]; // This will be in degrees for M0
+
+                        if (motorId == MOTOR_ID) { // Motor 0
+                            g_targetPotAngleDegrees = pos;
+                            g_controlLoopActive = true;
+                            g_newTargetForFastApproach = true;
+                            publishMotorStates();
+                        }
+                    }
                 }
-             }
-        } else if (message == "GETPOS") {
-            publishMotorStates(); // Publish current consolidated state
+            } else {
+                Serial.println("Unknown JSON command received.");
+            }
         }
     }
 }

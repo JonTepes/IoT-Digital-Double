@@ -5,6 +5,7 @@ const { Server } = require("socket.io");
 const mqtt = require('mqtt');
 const fs = require('fs');
 const path = require('path');
+const fetch = require('node-fetch');
 
 const app = express();
 const httpServer = createServer(app);
@@ -18,7 +19,7 @@ app.use(express.static(path.join(__dirname, 'digital_double')));
 // MJPG stream proxy
 app.get('/camera_stream', async (req, res) => {
   // TODO: Change to http://iotlinija.ddns.net:8081/?action=stream if needed
-  const streamUrl = 'http://localhost:8081/?action=stream';
+  const streamUrl = 'http://iotlinija.ddns.net:8081/?action=stream';
   try {
     const response = await fetch(streamUrl);
 
@@ -26,11 +27,14 @@ app.get('/camera_stream', async (req, res) => {
       throw new Error(`Failed to fetch stream: ${response.status} ${response.statusText}`);
     }
 
-    res.setHeader('Content-Type', 'multipart/x-mixed-replace; boundary=frame');
+    // Copy all headers from the camera stream response to the proxy response
+    response.headers.forEach((value, name) => {
+      res.setHeader(name, value);
+    });
     response.body.pipe(res);
   } catch (error) {
-    console.error(error);
-    res.status(500).send('Error fetching camera stream');
+    console.error(`Error fetching camera stream from ${streamUrl}:`, error.message);
+    res.status(500).send('Error fetching camera stream. Check server logs for details.');
   }
 });
 

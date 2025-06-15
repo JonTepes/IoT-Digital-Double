@@ -38,6 +38,8 @@ export class Conveyor extends BaseMachine {
         if (topic === this.config.topics?.state) {
             if (message.hasOwnProperty('position')) {
                 // Tukaj dodaj logiko za vizualno posodobitev tekočega traku (npr. premikanje teksture, animiranje valjev)
+                // Zaenkrat samo logiramo, kasneje lahko dodamo vizualno povratno informacijo
+                console.log(`Conveyor ${this.name} received position: ${message.position} cm`);
             }
             // --- Obravnava animacije glede na status ---
             if (message.hasOwnProperty('status')) {
@@ -55,6 +57,27 @@ export class Conveyor extends BaseMachine {
                             }
                         });
                     }
+                }
+            }
+        } else if (topic === this.config.topics?.control) {
+            // Handle control messages sent from the UI
+            if (message.command === 'move' && message.hasOwnProperty('position')) {
+                console.log(`Conveyor ${this.name} received move command to ${message.position} cm`);
+                // Here you would typically send this command to the actual physical conveyor
+                // For now, we can simulate the movement or update the visual state directly
+                // For a real application, this would involve publishing to another topic or calling a backend API
+                // For demonstration, let's just log and potentially update a visual indicator
+                if (this.animationActions.length > 0) {
+                    this.animationActions.forEach(action => {
+                        if (!action.isRunning()) {
+                            action.play(); // Start animation on move command
+                        }
+                    });
+                    // Simulate stopping after a short delay if no actual feedback loop
+                    setTimeout(() => {
+                        this.animationActions.forEach(action => action.stop());
+                        console.log(`Conveyor ${this.name} simulated stop.`);
+                    }, 2000); // Stop after 2 seconds
                 }
             }
         }

@@ -120,10 +120,10 @@ export class FactoryManager {
                 topicsToSubscribe.push(config.topics[key]);
             }
         }
-        if (config.controlTopics) { // npr. za Workpiece
+        // Also subscribe to control topics if they exist, as the machine might need to react to its own commands
+        if (config.controlTopics) {
             for (const key in config.controlTopics) {
                 this.addTopicMapping(config.controlTopics[key], machineInstance);
-                // Prepreči podvojene naročnine, če se controlTopics prekrivajo s topics
                 if (!topicsToSubscribe.includes(config.controlTopics[key])) {
                     topicsToSubscribe.push(config.controlTopics[key]);
                 }

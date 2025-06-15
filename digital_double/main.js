@@ -4,6 +4,7 @@ import { DragControls } from 'three/addons/controls/DragControls.js'; // Uvoz Dr
 import { FactoryManager } from './FactoryManager.js'; // Uvoz upravitelja
 import { factoryLayout } from './FactoryLayout.js'; // Uvoz konfiguracije postavitve
 import { mqttBrokerUrl } from './config.js'; // Import the MQTT broker URL
+import mqtt from 'mqtt'; // Import MQTT for publishing messages
 
 console.log("Script starting...");
 
@@ -15,25 +16,30 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xCFE2F3);
 
 // --- Nastavitev kamere ---
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+const threejsContainer = document.getElementById('threejs-container');
+if (!threejsContainer) console.error("Three.js container element #threejs-container not found!");
+
+const camera = new THREE.PerspectiveCamera(75, threejsContainer.clientWidth / threejsContainer.clientHeight, 0.1, 1000);
 camera.position.set(5, 5, 5); // Kamera premaknjena bližje (povečano)
 camera.lookAt(0, 0, 0); // Ohrani pogled usmerjen v središče
-
+ 
 // --- Nastavitev izrisovalnika ---
 const canvas = document.getElementById('webgl');
 if (!canvas) console.error("Canvas element #webgl not found!");
 const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
-renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setSize(threejsContainer.clientWidth, threejsContainer.clientHeight);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
+ 
 // --- Obravnava spremembe velikosti okna ---
 window.addEventListener('resize', () => {
     // Posodobi kamero
-    camera.aspect = window.innerWidth / window.innerHeight;
+    const newWidth = threejsContainer.clientWidth;
+    const newHeight = threejsContainer.clientHeight;
+    camera.aspect = newWidth / newHeight;
     camera.updateProjectionMatrix();
-
+ 
     // Posodobi izrisovalnik
-    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setSize(newWidth, newHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     console.log("Window resized.");
 });
@@ -104,6 +110,9 @@ let dragControlsInstanceId = 0; // Števec za instance DragControls za odpravlja
 let craneCount = 0;    // Števec za unikatna imena dvigal
 let boxHelpers = []; // Za shranjevanje BoxHelpers za posodabljanje
 
+// Global MQTT client instance
+let mqttClient = null;
+
 // Počakaj, da se DOM v celoti naloži, preden se izvede glavna logika
 document.addEventListener('DOMContentLoaded', () => {
     // Odstranjeno: poslušalec pointermove za ročno vlečenje
@@ -117,6 +126,8 @@ document.addEventListener('DOMContentLoaded', () => {
             setupDragControls();
             // Nastavi poslušalce gumbov uporabniškega vmesnika - ZDAJ varno za klic, ker je DOM pripravljen
             setupMenuButtons();
+            setupMachineControlPanel(); // Setup the machine control panel
+            connectMqttClient(); // Connect MQTT client for publishing
 
             if (canvas) { // Check canvas again just in case
                 animate();
@@ -328,6 +339,171 @@ function setupMenuButtons() {
     }
 }
 
+// --- MQTT Client Connection ---
+function connectMqttClient() {
+    if (mqttClient) {
+        return; // Prevent multiple connections
+    }
+    mqttClient = mqtt.connect(mqttBrokerUrl);
+
+    mqttClient.on('connect', () => {
+        console.log('MQTT Client Connected for publishing controls.');
+    });
+
+    mqttClient.on('error', (err) => {
+        console.error('MQTT Client Error (for controls):', err);
+    });
+}
+
+// --- Publish MQTT Message ---
+function publishMqttMessage(topic, message) {
+    if (mqttClient && mqttClient.connected) {
+        mqttClient.publish(topic, JSON.stringify(message), (err) => {
+            if (err) {
+                console.error(`Failed to publish MQTT message to ${topic}:`, err);
+            } else {
+                console.log(`Published to ${topic}: ${JSON.stringify(message)}`);
+            }
+        });
+    } else {
+        console.warn('MQTT client not connected. Cannot publish message.');
+    }
+}
+
+// --- Machine Control Panel Logic ---
+let currentMachineControlPanel = null; // To keep track of the currently displayed panel
+
+function setupMachineControlPanel() {
+    const machineControlsContainer = document.getElementById('machine-controls');
+    const controlsContentDiv = document.getElementById('controls-content');
+    const threejsContainer = document.getElementById('threejs-container');
+
+    if (!machineControlsContainer || !controlsContentDiv || !threejsContainer) {
+        console.error("Missing control panel elements in HTML.");
+        return;
+    }
+
+    // Raycaster for detecting clicks on Three.js objects
+    const raycaster = new THREE.Raycaster();
+    const pointer = new THREE.Vector2();
+
+    // Event listener for clicks on the Three.js container
+    threejsContainer.addEventListener('click', (event) => {
+        // Calculate pointer position in normalized device coordinates (-1 to +1)
+        pointer.x = (event.clientX / threejsContainer.clientWidth) * 2 - 1;
+        pointer.y = - (event.clientY / threejsContainer.clientHeight) * 2 + 1;
+
+        raycaster.setFromCamera(pointer, camera);
+
+        const intersects = raycaster.intersectObjects(draggableObjects, true); // Check all draggable objects and their children
+
+        if (intersects.length > 0) {
+            const intersectedObject = intersects[0].object;
+            const rootMachineModel = getRootMachineModelFromIntersection(intersectedObject);
+
+            if (rootMachineModel) {
+                const machine = factoryManager.getMachineByName(rootMachineModel.name);
+                if (machine) {
+                    displayMachineControls(machine);
+                }
+            }
+        } else {
+            // Clicked outside any machine, hide controls
+            hideMachineControls();
+        }
+    });
+
+    function displayMachineControls(machine) {
+        // Clear previous controls
+        controlsContentDiv.innerHTML = '';
+        if (currentMachineControlPanel) {
+            currentMachineControlPanel.remove();
+            currentMachineControlPanel = null;
+        }
+
+        let template;
+        if (machine.config.type === 'Conveyor') {
+            template = document.getElementById('conveyor-control-template');
+        } else if (machine.config.type === 'Crane') {
+            template = document.getElementById('crane-control-template');
+        }
+
+        if (template) {
+            const clone = document.importNode(template.content, true);
+            const panel = clone.querySelector('.machine-control-panel');
+            panel.dataset.machineName = machine.name;
+            panel.querySelector('.machine-name-display').innerText = machine.name;
+
+            if (machine.config.type === 'Conveyor') {
+                const slider = panel.querySelector('.conveyor-slider');
+                const display = panel.querySelector('.conveyor-position-display');
+                const moveBtn = panel.querySelector('.conveyor-move-btn');
+
+                slider.addEventListener('input', () => {
+                    display.innerText = `${slider.value} cm`;
+                });
+
+                moveBtn.addEventListener('click', () => {
+                    const positionCm = parseFloat(slider.value);
+                    const topic = machine.config.topics?.control;
+                    if (topic) {
+                        // Conveyor expects JSON: {"command": "MOVE_REL", "value": <cm>}
+                        publishMqttMessage(topic, { command: 'MOVE_REL', value: positionCm });
+                    } else {
+                        console.warn(`Conveyor ${machine.name} has no control topic defined.`);
+                    }
+                });
+            } else if (machine.config.type === 'Crane') {
+                const m0Slider = panel.querySelector('.crane-m0-slider');
+                const m0Display = panel.querySelector('.crane-m0-display');
+                const m1Slider = panel.querySelector('.crane-m1-slider');
+                const m1Display = panel.querySelector('.crane-m1-display');
+                const m2Slider = panel.querySelector('.crane-m2-slider');
+                const m2Display = panel.querySelector('.crane-m2-display');
+                const moveBtn = panel.querySelector('.crane-move-btn');
+
+                m0Slider.addEventListener('input', () => { m0Display.innerText = `${m0Slider.value}°`; });
+                m1Slider.addEventListener('input', () => { m1Display.innerText = `${m1Slider.value} cm`; });
+                m2Slider.addEventListener('input', () => { m2Display.innerText = `${m2Slider.value} cm`; });
+
+                moveBtn.addEventListener('click', () => {
+                    const m0Pos = parseFloat(m0Slider.value);
+                    const m1Pos = parseFloat(m1Slider.value);
+                    const m2Pos = parseFloat(m2Slider.value);
+
+                    const topic = machine.config.topics?.control;
+                    if (topic) {
+                        // Crane expects JSON: {"command": "move_all", "motors": [{"id": 0, "pos": <val>}, ...]}
+                        publishMqttMessage(topic, {
+                            command: 'move_all',
+                            motors: [
+                                { id: 0, pos: m0Pos }, // Motor 0 (rokaM0.ino) expects degrees
+                                { id: 1, pos: m1Pos }, // Motor 1 (roka.ino) expects cm
+                                { id: 2, pos: m2Pos }  // Motor 2 (roka.ino) expects cm
+                            ]
+                        });
+                    } else {
+                        console.warn(`Crane ${machine.name} has no control topic defined.`);
+                    }
+                });
+            }
+
+            controlsContentDiv.appendChild(panel);
+            machineControlsContainer.style.display = 'block'; // Show the control panel
+            currentMachineControlPanel = panel;
+        } else {
+            console.warn(`No control template found for machine type: ${machine.config.type}`);
+            hideMachineControls();
+        }
+    }
+
+    function hideMachineControls() {
+        machineControlsContainer.style.display = 'none';
+        controlsContentDiv.innerHTML = '';
+        currentMachineControlPanel = null;
+    }
+}
+
 // --- Function to Add Machine from Menu ---
 // --- Funkcija za dodajanje stroja iz menija ---
 async function promptForTopicsAndAdd(type) {
@@ -336,21 +512,33 @@ async function promptForTopicsAndAdd(type) {
     // --- Prilagodi pozive glede na tip stroja ---
     if (type === 'Conveyor') {
         const stateTopic = prompt(`Enter MQTT topic for ${type} state/position (e.g., assemblyline/conveyor/state):`);
-        if (!stateTopic) { // Obravnavaj preklic ali prazen vnos
+        if (!stateTopic) {
             console.log("Add Conveyor cancelled.");
             return;
         }
-        topics.state = stateTopic; // Dodeli ključu, na katerega se lahko kasneje sklicujemo
+        topics.state = stateTopic;
+
+        const controlTopic = prompt(`Enter MQTT topic for ${type} commands (e.g., assemblyline/conveyor/command):`);
+        if (!controlTopic) {
+            console.log("Add Conveyor cancelled (missing control topic).");
+            return;
+        }
+        topics.control = controlTopic; // Store control topic under 'topics' for simplicity
+
     } else if (type === 'Crane') {
         const motorStateTopic = prompt(`Enter MQTT topic for ${type} motor state (e.g., assemblyline/crane/motor_state):`);
-         if (!motorStateTopic) { // Obravnavaj preklic ali prazen vnos
+         if (!motorStateTopic) {
             console.log("Add Crane cancelled.");
             return;
         }
-        topics.motor_state = motorStateTopic; // Dodeli ključu
-        // Tukaj dodaj več pozivov, če dvigalo potrebuje druge teme (npr. položaj)
-        // const positionTopic = prompt(...);
-        // if (positionTopic) topics.position = positionTopic;
+        topics.motor_state = motorStateTopic;
+
+        const controlTopic = prompt(`Enter MQTT topic for ${type} commands (e.g., assemblyline/crane/command):`);
+        if (!controlTopic) {
+            console.log("Add Crane cancelled (missing control topic).");
+            return;
+        }
+        topics.control = controlTopic; // Store control topic under 'topics' for simplicity
     }
 
     // Find the blueprint configuration from the original layout array
@@ -393,8 +581,7 @@ async function promptForTopicsAndAdd(type) {
         name: newName,
         gridPos: { x: initialGridX, y: initialGridY }, // Postavi na novo mesto
         rotationY: 0, // Privzeta rotacija
-        topics: topics, // Dodeli teme, ki jih je vnesel uporabnik
-        controlTopics: {} // Ohrani ločeno, če je potrebno, ali združi logiko
+        topics: topics // Dodeli teme, ki jih je vnesel uporabnik (zdaj vključuje control)
     };
 
     // Uporabi FactoryManager za dodajanje stroja
@@ -434,8 +621,7 @@ function exportLayoutToJson() {
             name: machine.name, // Use the instance name
             modelPath: machine.config.modelPath,
             rotationY: machine.config.rotationY !== undefined ? machine.config.rotationY : 0,
-            topics: machine.config.topics || {},
-            controlTopics: machine.config.controlTopics || {}
+            topics: machine.config.topics || {} // Now includes control topic
         };
 
         // Obravnavaj položaj glede na to, ali gre za običajen stroj ali podoben obdelovancu

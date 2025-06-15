@@ -135,87 +135,89 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
     Serial.print("MQTT Received ["); Serial.print(topic); Serial.print("]: "); Serial.println(message);
 
     if (String(topic) == commandTopic) {
-        int motorIndex = -1;
-        // Target position received from MQTT is now expected in CM
-        float targetPosCm = 0.0;
+        StaticJsonDocument<256> doc; // Increased size for JSON parsing
+        DeserializationError error = deserializeJson(doc, payload, length);
 
-        // Command format: "MOVE <motor_id> <position_cm>"
-        if (message.startsWith("MOVE ")) {
-            int firstSpace = message.indexOf(' ');
-            int secondSpace = message.indexOf(' ', firstSpace + 1);
-            if (firstSpace != -1 && secondSpace != -1) {
-                motorIndex = message.substring(firstSpace + 1, secondSpace).toInt();
-                // Parse the position as a float (centimeters)
-                targetPosCm = message.substring(secondSpace + 1).toFloat();
-
-                // Convert target CM to steps for AccelStepper
-                long targetPosSteps = cmToSteps(targetPosCm);
-
-                if (motorIndex == MOTOR_IDS[0]) { // Motor 1
-                    Serial.print("Moving Local Motor 1 to ");
-                    Serial.print(targetPosCm);
-                    Serial.print(" cm (");
-                    Serial.print(targetPosSteps);
-                    Serial.println(" steps)");
-                    stepper1.moveTo(targetPosSteps); // Command stepper with steps
+        if (error) {
+            Serial.print(F("deserializeJson() failed: "));
+            Serial.println(error.f_str());
+            // Fallback to old string parsing for non-JSON commands
+            if (message.startsWith("STOP ")) {
+                int motorIndex = -1;
+                String indexStr = message.substring(5);
+                indexStr.trim();
+                if (indexStr.length() > 0) {
+                     motorIndex = indexStr.toInt();
+                    if (motorIndex == MOTOR_IDS[0]) { // Motor 1
+                        Serial.println("Stopping Local Motor 1");
+                        stepper1.stop();
+                        stepper1.runToPosition(); // Ensure smooth deceleration
+                        publishComponentStates(); // Publish immediate update
+                    } else if (motorIndex == MOTOR_IDS[1]) { // Motor 2
+                        Serial.println("Stopping Local Motor 2");
+                        stepper2.stop();
+                        stepper2.runToPosition(); // Ensure smooth deceleration
+                        publishComponentStates(); // Publish immediate update
+                    } else {
+                        Serial.println("Ignoring STOP command for unknown/remote motor index.");
+                    }
+                } else { Serial.println("Invalid STOP format (missing motor index)."); }
+            } else if (message.startsWith("SET MAGNET ")) {
+                String stateStr = message.substring(11);
+                stateStr.trim();
+                if (stateStr == "1") {
+                    setMagnet(true); // Turn magnet ON
                     publishComponentStates(); // Publish immediate update
-                } else if (motorIndex == MOTOR_IDS[1]) { // Motor 2
-                     Serial.print("Moving Local Motor 2 to ");
-                     Serial.print(targetPosCm);
-                     Serial.print(" cm (");
-                     Serial.print(targetPosSteps);
-                     Serial.println(" steps)");
-                    stepper2.moveTo(targetPosSteps); // Command stepper with steps
-                    publishComponentStates(); // Publish immediate update
-                } else {
-                    Serial.println("Ignoring MOVE command for unknown/remote motor index.");
-                }
-
-            } else { Serial.println("Invalid MOVE format. Expected: MOVE <motor_id> <cm>"); }
-
-        // Command format: "STOP <motor_id>"
-        } else if (message.startsWith("STOP ")) {
-            String indexStr = message.substring(5);
-            indexStr.trim();
-            if (indexStr.length() > 0) {
-                 motorIndex = indexStr.toInt();
-                if (motorIndex == MOTOR_IDS[0]) { // Motor 1
-                    Serial.println("Stopping Local Motor 1");
-                    stepper1.stop();
-                    stepper1.runToPosition(); // Ensure smooth deceleration
-                    publishComponentStates(); // Publish immediate update
-                } else if (motorIndex == MOTOR_IDS[1]) { // Motor 2
-                    Serial.println("Stopping Local Motor 2");
-                    stepper2.stop();
-                    stepper2.runToPosition(); // Ensure smooth deceleration
+                } else if (stateStr == "0") {
+                    setMagnet(false); // Turn magnet OFF
                     publishComponentStates(); // Publish immediate update
                 } else {
-                    Serial.println("Ignoring STOP command for unknown/remote motor index.");
+                    Serial.println("Invalid SET MAGNET format (use 1 for ON, 0 for OFF).");
                 }
-            } else { Serial.println("Invalid STOP format (missing motor index)."); }
-
-        // --- Magnet Control Commands ---
-        // Command format: "SET MAGNET 1" (ON) or "SET MAGNET 0" (OFF)
-        } else if (message.startsWith("SET MAGNET ")) {
-            String stateStr = message.substring(11);
-            stateStr.trim();
-            if (stateStr == "1") {
-                setMagnet(true); // Turn magnet ON
-                publishComponentStates(); // Publish immediate update
-            } else if (stateStr == "0") {
-                setMagnet(false); // Turn magnet OFF
-                publishComponentStates(); // Publish immediate update
+            } else if (message == "GETSTATUS" || message == "GETPOS") {
+                Serial.println("GETSTATUS/GETPOS received, publishing current component states (positions in CM).");
+                publishComponentStates();
             } else {
-                Serial.println("Invalid SET MAGNET format (use 1 for ON, 0 for OFF).");
+                 Serial.println("Unknown command format received.");
             }
-
-        // Command format: "GETSTATUS" (or original "GETPOS")
-        } else if (message == "GETSTATUS" || message == "GETPOS") { // Accept both for compatibility
-            Serial.println("GETSTATUS/GETPOS received, publishing current component states (positions in CM).");
-            publishComponentStates(); // Publish current individual states
-
         } else {
-             Serial.println("Unknown command format received.");
+            // JSON parsing successful
+            const char* command = doc["command"];
+            if (command && String(command) == "move_all") {
+                JsonArray motors = doc["motors"].as<JsonArray>();
+                if (motors) {
+                    for (JsonObject motor : motors) {
+                        int motorId = motor["id"];
+                        float pos = motor["pos"]; // This will be in cm for M1 and M2
+
+                        if (motorId == MOTOR_IDS[0]) { // Motor 1
+                            long targetPosSteps = cmToSteps(pos);
+                            Serial.print("Moving Local Motor 1 to ");
+                            Serial.print(pos);
+                            Serial.print(" cm (");
+                            Serial.print(targetPosSteps);
+                            Serial.println(" steps)");
+                            stepper1.moveTo(targetPosSteps);
+                            publishComponentStates();
+                        } else if (motorId == MOTOR_IDS[1]) { // Motor 2
+                            long targetPosSteps = cmToSteps(pos);
+                            Serial.print("Moving Local Motor 2 to ");
+                            Serial.print(pos);
+                            Serial.print(" cm (");
+                            Serial.print(targetPosSteps);
+                            Serial.println(" steps)");
+                            stepper2.moveTo(targetPosSteps);
+                            publishComponentStates();
+                        }
+                    }
+                }
+            } else if (command && String(command) == "set_magnet") { // New JSON command for magnet
+                bool state = doc["state"];
+                setMagnet(state);
+                publishComponentStates();
+            } else {
+                Serial.println("Unknown JSON command received.");
+            }
         }
     }
 }

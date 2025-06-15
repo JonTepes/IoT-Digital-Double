@@ -6,39 +6,149 @@
     <title>Single Block MQTT Test</title> <!-- Posodobljen naslov -->
     <style>
         /* Osnovni CSS za odstranitev privzetih robov/drsnih trakov */
-        body { margin: 0; overflow: hidden; }
-        canvas { display: block; }
+        body {
+            margin: 0;
+            overflow: hidden;
+            display: flex; /* Use flexbox for overall layout */
+            height: 100vh; /* Full viewport height */
+            font-family: Arial, sans-serif;
+            color: #333;
+        }
+        #main-container {
+            display: flex;
+            flex-grow: 1; /* Allow it to take available space */
+        }
+        #threejs-container {
+            flex: 3; /* Three.js takes 3 parts of space */
+            display: flex;
+            flex-direction: column;
+            position: relative; /* For absolute positioning of canvas if needed */
+        }
+        #webgl {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        #sidebar {
+            flex: 1; /* Sidebar takes 1 part of space */
+            background-color: #f0f0f0;
+            padding: 15px;
+            overflow-y: auto; /* Enable scrolling for content */
+            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 20px; /* Space between sections */
+        }
+        h1 {
+            text-align: center;
+            margin-top: 0;
+            margin-bottom: 20px;
+            color: #0056b3;
+        }
+        h3 {
+            margin-top: 0;
+            color: #0056b3;
+        }
+        #menu button {
+            display: block;
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        #menu button:hover {
+            background-color: #0056b3;
+        }
+        #camera-stream img {
+            max-width: 100%;
+            height: auto;
+            border: 1px solid #ccc;
+            box-sizing: border-box; /* Include padding and border in the element's total width and height */
+        }
+        #mqtt-data p {
+            margin: 5px 0;
+            word-wrap: break-word;
+        }
     </style>
 </head>
 <body>
-    <h1>Factory Digital Twin</h1>
-    <div id="menu">
-        <h3>Add Machine</h3>
-        <!-- Prepričaj se, da je atribut id točno takšen -->
-        <button id="add-conveyor">Dodaj tekoči trak</button>
-        <!-- Prepričaj se, da je atribut id točno takšen -->
-        <button id="add-crane">Dodaj roko</button>
-        
-        <button id="export-layout-btn">Export Layout (JSON)</button>
-        <button id="import-layout-btn">Import Layout (JSON)</button>
-        
-        <input type="file" id="import-layout-file" accept=".json" style="display: none;">
+    <div id="main-container">
+        <!-- Three.js scene on the left -->
+        <div id="threejs-container">
+            <canvas id="webgl"></canvas>
+        </div>
 
-    </div>
-    
-    <div id="camera-stream">
-        <h3>Camera Stream</h3>
-        <img src="/camera_stream" alt="Camera Stream" width="640" height="480">
-    </div>
+        <!-- Sidebar on the right for camera, MQTT, and menu -->
+        <div id="sidebar">
+            <h1>Factory Digital Twin</h1>
+            <div id="camera-stream">
+                <h3>Camera Stream</h3>
+                <img src="/camera_stream" alt="Camera Stream">
+            </div>
 
-    <div id="mqtt-data">
-        <h3>MQTT Data</h3>
-        <p id="mqtt-topic">Topic: </p>
-        <p id="mqtt-message">Message: </p>
-    </div>
+            <div id="mqtt-data">
+                <h3>MQTT Data</h3>
+                <p id="mqtt-topic">Topic: </p>
+                <p id="mqtt-message">Message: </p>
+            </div>
 
-    <!-- Tukaj se bo izrisala 3D scena -->
-    <canvas id="webgl"></canvas>
+            <div id="menu">
+                <h3>Add Machine</h3>
+                <button id="add-conveyor">Dodaj tekoči trak</button>
+                <button id="add-crane">Dodaj roko</button>
+                
+                <button id="export-layout-btn">Export Layout (JSON)</button>
+                <button id="import-layout-btn">Import Layout (JSON)</button>
+                
+                <input type="file" id="import-layout-file" accept=".json" style="display: none;">
+            </div>
+
+            <div id="machine-controls" style="display: none;">
+                <h3>Machine Controls</h3>
+                <div id="controls-content">
+                    <!-- Dynamic controls will be loaded here -->
+                </div>
+            </div>
+
+            <!-- Templates for machine controls -->
+            <template id="conveyor-control-template">
+                <div class="machine-control-panel" data-machine-name="">
+                    <h4>Conveyor: <span class="machine-name-display"></span></h4>
+                    <label for="conveyor-slider">Position (cm):</label>
+                    <input type="range" class="conveyor-slider" min="-10" max="10" value="0" step="0.1">
+                    <span class="conveyor-position-display">0.0 cm</span>
+                    <button class="conveyor-move-btn">Move Belt</button>
+                </div>
+            </template>
+
+            <template id="crane-control-template">
+                <div class="machine-control-panel" data-machine-name="">
+                    <h4>Crane: <span class="machine-name-display"></span></h4>
+                    <div>
+                        <label for="crane-m0-slider">Motor 0 (degrees):</label>
+                        <input type="range" class="crane-m0-slider" min="-180" max="180" value="0" step="1">
+                        <span class="crane-m0-display">0°</span>
+                    </div>
+                    <div>
+                        <label for="crane-m1-slider">Motor 1 (cm):</label>
+                        <input type="range" class="crane-m1-slider" min="0" max="17.5" value="0" step="0.1">
+                        <span class="crane-m1-display">0.0 cm</span>
+                    </div>
+                    <div>
+                        <label for="crane-m2-slider">Motor 2 (cm):</label>
+                        <input type="range" class="crane-m2-slider" min="0" max="8.5" value="0" step="0.1">
+                        <span class="crane-m2-display">0.0 cm</span>
+                    </div>
+                    <button class="crane-move-btn">Move All Motors</button>
+                </div>
+            </template>
+        </div>
+    </div>
 
     <!-- Popravljen zemljevid uvozov (Import Map) -->
     <script type="importmap">
