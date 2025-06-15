@@ -2,4 +2,5 @@
 digital_double/config.js
 
 ArduinoCode/credentials.h
+ArduinoCode/*/credentials.h
 node_modules/
