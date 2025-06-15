@@ -461,9 +461,18 @@ function setupMachineControlPanel() {
                 const m2Display = panel.querySelector('.crane-m2-display');
                 const moveBtn = panel.querySelector('.crane-move-btn');
 
+                // Set initial values from machine state
+                const initialMotorPositions = machine.currentMotorPositions || { m0: 0, m1: 0, m2: 0 };
+                m0Slider.value = initialMotorPositions.m0;
+                m0Display.innerText = `${initialMotorPositions.m0}°`;
+                m1Slider.value = initialMotorPositions.m1;
+                m1Display.innerText = `${initialMotorPositions.m1.toFixed(1)} cm`;
+                m2Slider.value = initialMotorPositions.m2;
+                m2Display.innerText = `${initialMotorPositions.m2.toFixed(1)} cm`;
+
                 m0Slider.addEventListener('input', () => { m0Display.innerText = `${m0Slider.value}°`; });
-                m1Slider.addEventListener('input', () => { m1Display.innerText = `${m1Slider.value} cm`; });
-                m2Slider.addEventListener('input', () => { m2Display.innerText = `${m2Slider.value} cm`; });
+                m1Slider.addEventListener('input', () => { m1Display.innerText = `${parseFloat(m1Slider.value).toFixed(1)} cm`; });
+                m2Slider.addEventListener('input', () => { m2Display.innerText = `${parseFloat(m2Slider.value).toFixed(1)} cm`; });
 
                 moveBtn.addEventListener('click', () => {
                     const m0Pos = parseFloat(m0Slider.value);

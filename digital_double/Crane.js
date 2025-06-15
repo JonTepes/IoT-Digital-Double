@@ -16,6 +16,7 @@ export class Crane extends BaseMachine {
         this.initialRotationM0 = 0;
         this.initialPositionM1 = new THREE.Vector3();
         this.initialPositionM2 = new THREE.Vector3();
+        this.currentMotorPositions = { m0: 0, m1: 0, m2: 0 }; // Dodaj lastnost za shranjevanje trenutnih položajev motorjev
     }
 
     async loadModel() {
@@ -62,6 +63,7 @@ export class Crane extends BaseMachine {
                         if (this.motor0) {
                             const rotationRadians = THREE.MathUtils.degToRad(positionValue);
                             this.motor0.rotation.y = this.initialRotationM0 - rotationRadians;
+                            this.currentMotorPositions.m0 = positionValue; // Update current position
                         }
                         break;
                     case 1: // Linearno gibanje 1 (npr. horizontalna roka) - Predpostavlja gibanje po osi X
@@ -70,6 +72,7 @@ export class Crane extends BaseMachine {
                             // Uporabi relativno glede na začetni položaj vzdolž lokalne osi X motorja
                             // Ali, če je gibanje vzdolž svetovne osi X:
                             this.motor1.position.z = this.initialPositionM1.x + positionUnits;
+                            this.currentMotorPositions.m1 = positionValue; // Update current position
                         }
                         break;
                     case 2: // Linearno gibanje 2 (npr. vertikalno dvigalo) - Predpostavlja gibanje po osi Y
@@ -78,6 +81,7 @@ export class Crane extends BaseMachine {
                             // Uporabi relativno glede na začetni položaj vzdolž lokalne osi Y motorja (gor/dol)
                             // Upoštevaj negativni predznak, če pozitivni cm pomeni premik navzdol v Three.js sistemu z osjo Y navzgor
                             this.motor2.position.y = this.initialPositionM2.y - positionUnits;
+                            this.currentMotorPositions.m2 = positionValue; // Update current position
                         }
                         break;
                     default:
