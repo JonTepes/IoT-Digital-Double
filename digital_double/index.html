@@ -183,6 +183,28 @@
             <input type="range" class="conveyor-slider" min="-10" max="10" value="0" step="0.1">
             <span class="conveyor-position-display slider-value-display">0.0 cm</span>
             <button class="conveyor-move-btn">Premakni trak</button>
+
+            <!-- Color Sensor Display (initially hidden) -->
+            <div class="color-sensor-display" style="display: none; margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px;">
+                <h4>Barvni senzor:</h4>
+                <div>
+                    <label>R:</label>
+                    <span class="color-r-display slider-value-display">0</span>
+                </div>
+                <div>
+                    <label>G:</label>
+                    <span class="color-g-display slider-value-display">0</span>
+                </div>
+                <div>
+                    <label>B:</label>
+                    <span class="color-b-display slider-value-display">0</span>
+                </div>
+                <div>
+                    <label>C:</label>
+                    <span class="color-c-display slider-value-display">0</span>
+                </div>
+                <p class="sensor-status-display" style="font-size: 0.9em; color: #666;"></p>
+            </div>
         </div>
     </template>
 
