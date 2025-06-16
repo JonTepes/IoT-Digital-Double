@@ -207,7 +207,11 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
         } else { Serial.println("  MOVE_REL missing 'value'"); }
     } else if (cmdStr == "STOP") {
         Serial.println("  STOP command received.");
-        conveyorStepper.stop();
+        // To achieve an "instant stop", set acceleration to a very high value temporarily
+        conveyorStepper.setAcceleration(100000.0); // A very high acceleration value
+        conveyorStepper.stop(); // This will now stop almost instantly
+        // Immediately reset acceleration to original value for future movements
+        conveyorStepper.setAcceleration(CONVEYOR_ACCEL);
         // State change detection in loop() will trigger publish with fresh color read
     } else if (cmdStr == "GET_STATE") {
         Serial.println("  GET_STATE command received.");

@@ -54,28 +54,14 @@ const float ANGLE_QUANTIZATION_STEP = 2.5f;
 
 float g_targetPotAngleDegrees = 0.0f;
 bool g_controlLoopActive = false;
-const float ANGLE_TOLERANCE = 1.5f;
+const float ANGLE_TOLERANCE = 2.5f;
 
-enum ControlState {
-    IDLE_STATE,
-    FAST_APPROACH_STATE,
-    FINE_ADJUST_STATE,
-    HOLDING_STATE
-};
-ControlState g_currentControlState = IDLE_STATE;
-bool g_newTargetForFastApproach = false;
+const float KP_GAIN = 100.0f; // Proportional gain for speed control (degrees/sec per degree of error)
+const float MAX_MOTOR_SPEED_DEGREES_PER_SEC = 390.0f; // Max speed in degrees/sec
+const float MIN_MOTOR_SPEED_DEGREES_PER_SEC = 20.0f; // Min speed in degrees/sec (to avoid stalling)
+const float MOTOR_DIRECTION_FACTOR = 1.0f; // Adjust if motor direction needs to be inverted
 
-const float FAST_APPROACH_ERROR_THRESHOLD = 7.0f;
-const float MAX_SPEED_FAST_APPROACH = 390.0f;
-const float ACCEL_FAST_APPROACH = 500.0f;
-
-const float P_GAIN_FINE_ADJUST = 4.0f;
-const float MIN_SPEED_FINE_ADJUST = 20.0f;
-const float MAX_SPEED_FINE_ADJUST_CAP = 100.0f;
-const float ACCEL_FINE_ADJUST = 300.0f;
-
-const int STEPS_PER_CORRECTION_TICK_FINE = 1;
-const float MOTOR_DIRECTION_FACTOR = 1.0f;
+// No explicit states needed, just a flag for active control
 
 void setupWifi();
 void reconnectMqtt();
@@ -92,8 +78,7 @@ void setup() {
     pinMode(POTENTIOMETER_PIN, INPUT);
     updatePotentiometerAngles();
     g_targetPotAngleDegrees = g_controlPotAngleDegrees;
-    g_controlLoopActive = false;
-    g_currentControlState = IDLE_STATE;
+    g_controlLoopActive = false; // Start in idle mode
     setupWifi();
     mqttClient.setServer(mqttServer, mqttPort);
     mqttClient.setCallback(mqttCallback);
@@ -110,67 +95,32 @@ void loop() {
         float error = g_targetPotAngleDegrees - g_controlPotAngleDegrees;
         float absError = abs(error);
 
-        if (absError <= ANGLE_TOLERANCE) {
-            g_currentControlState = HOLDING_STATE;
-        } else if (absError <= FAST_APPROACH_ERROR_THRESHOLD) {
-            if (g_currentControlState == FAST_APPROACH_STATE) {
-                stepper0.stop();
-                stepper0.moveTo(stepper0.currentPosition());
-            }
-            g_currentControlState = FINE_ADJUST_STATE;
-        } else {
-            if (g_currentControlState != FAST_APPROACH_STATE || g_newTargetForFastApproach) {
-                 g_currentControlState = FAST_APPROACH_STATE;
-                 g_newTargetForFastApproach = true;
-            }
-        }
+        if (absError > ANGLE_TOLERANCE) {
+            // Proportional control: speed is proportional to error
+            float desiredSpeedDegreesPerSec = error * KP_GAIN;
 
-        switch (g_currentControlState) {
-            case FAST_APPROACH_STATE:
-                if (g_newTargetForFastApproach) {
-                    stepper0.setMaxSpeed(MAX_SPEED_FAST_APPROACH);
-                    stepper0.setAcceleration(ACCEL_FAST_APPROACH);
-                    long estimatedStepsToFinalTarget = round(error / (DEGREES_PER_STEP * MOTOR_DIRECTION_FACTOR));
-                    long absoluteTargetStepperPos = stepper0.currentPosition() + estimatedStepsToFinalTarget;
-                    stepper0.moveTo(absoluteTargetStepperPos);
-                    g_newTargetForFastApproach = false;
+            // Constrain speed within min/max limits
+            if (abs(desiredSpeedDegreesPerSec) > MAX_MOTOR_SPEED_DEGREES_PER_SEC) {
+                desiredSpeedDegreesPerSec = copysign(MAX_MOTOR_SPEED_DEGREES_PER_SEC, desiredSpeedDegreesPerSec);
+            } else if (abs(desiredSpeedDegreesPerSec) < MIN_MOTOR_SPEED_DEGREES_PER_SEC) {
+                // Only apply min speed if there's a significant error to avoid micro-movements
+                if (absError > (ANGLE_TOLERANCE / 2.0f)) { // A small hysteresis
+                    desiredSpeedDegreesPerSec = copysign(MIN_MOTOR_SPEED_DEGREES_PER_SEC, desiredSpeedDegreesPerSec);
+                } else {
+                    desiredSpeedDegreesPerSec = 0; // Stop if error is very small
                 }
-                break;
-            case FINE_ADJUST_STATE:
-                {
-                    float desiredSpeed = absError * P_GAIN_FINE_ADJUST;
-                    desiredSpeed = constrain(desiredSpeed, MIN_SPEED_FINE_ADJUST, MAX_SPEED_FINE_ADJUST_CAP);
-                    stepper0.setMaxSpeed(desiredSpeed);
-                    stepper0.setAcceleration(ACCEL_FINE_ADJUST);
-                    long currentStepperInternalPos = stepper0.currentPosition();
-                    long nextStepperInternalTarget;
-                    if (error * MOTOR_DIRECTION_FACTOR > 0) {
-                        nextStepperInternalTarget = currentStepperInternalPos + STEPS_PER_CORRECTION_TICK_FINE;
-                    } else {
-                        nextStepperInternalTarget = currentStepperInternalPos - STEPS_PER_CORRECTION_TICK_FINE;
-                    }
-                    stepper0.moveTo(nextStepperInternalTarget);
-                }
-                break;
-            case HOLDING_STATE:
-                if (stepper0.distanceToGo() != 0) {
-                    stepper0.stop();
-                    stepper0.moveTo(stepper0.currentPosition());
-                }
-                if (absError > ANGLE_TOLERANCE) {
-                    g_currentControlState = FINE_ADJUST_STATE;
-                }
-                break;
-            case IDLE_STATE:
-            default:
-                break;
+            }
+
+            // Convert desired speed from degrees/sec to steps/sec
+            float desiredSpeedStepsPerSec = desiredSpeedDegreesPerSec * STEPS_PER_DEGREE * MOTOR_DIRECTION_FACTOR;
+            stepper0.setSpeed(desiredSpeedStepsPerSec);
+        } else {
+            // Within tolerance, stop the motor
+            stepper0.setSpeed(0);
         }
     } else {
-        g_currentControlState = IDLE_STATE;
-        if (stepper0.distanceToGo() != 0) {
-            stepper0.stop();
-            stepper0.moveTo(stepper0.currentPosition());
-        }
+        // Control loop not active, ensure motor is stopped
+        stepper0.setSpeed(0);
     }
 
     stepper0.run();
@@ -216,10 +166,8 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
                  if (indexStr.length() > 0) {
                     int motorIndex = indexStr.toInt();
                     if (motorIndex == MOTOR_ID) {
-                        g_controlLoopActive = false;
-                        g_currentControlState = IDLE_STATE;
-                        stepper0.stop();
-                        stepper0.moveTo(stepper0.currentPosition());
+                        g_controlLoopActive = false; // Deactivate control loop
+                        stepper0.setSpeed(0); // Stop the motor
                         publishMotorStates(); // Publish updated state immediately
                     }
                  }
@@ -240,8 +188,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 
                         if (motorId == MOTOR_ID) { // Motor 0
                             g_targetPotAngleDegrees = pos;
-                            g_controlLoopActive = true;
-                            g_newTargetForFastApproach = true;
+                            g_controlLoopActive = true; // Activate control loop
                             publishMotorStates();
                         }
                     }
@@ -267,14 +214,18 @@ void publishMotorStates() {
     doc0["stepper_pos_deg"] = round(internalStepperDegrees * 10.0)/10.0;
 
     switch(g_currentControlState) {
-        case IDLE_STATE:
-            if(stepper0.distanceToGo() == 0) doc0["state"] = "IDLE";
-            else doc0["state"] = "STOPPING";
-            break;
-        case FAST_APPROACH_STATE: doc0["state"] = "FAST_APPROACH"; break;
-        case FINE_ADJUST_STATE:   doc0["state"] = "FINE_ADJUST";   break;
-        case HOLDING_STATE:       doc0["state"] = "HOLDING";       break;
-        default:                  doc0["state"] = "UNKNOWN";       break;
+        // Report state based on control loop activity and error
+        if (g_controlLoopActive) {
+            float error = g_targetPotAngleDegrees - g_controlPotAngleDegrees;
+            float absError = abs(error);
+            if (absError <= ANGLE_TOLERANCE) {
+                doc0["state"] = "HOLDING";
+            } else {
+                doc0["state"] = "MOVING";
+            }
+        } else {
+            doc0["state"] = "IDLE";
+        }
     }
 
     doc0["target_pot_angle"] = round(g_targetPotAngleDegrees * 10.0)/10.0;
@@ -309,10 +260,9 @@ void reconnectMqtt() {
             if (mqttClient.subscribe(commandTopic)) {
                  updatePotentiometerAngles();
                  g_targetPotAngleDegrees = g_controlPotAngleDegrees;
-                 g_controlLoopActive = false;
-                 g_currentControlState = IDLE_STATE;
+                 g_controlLoopActive = false; // Ensure control loop is off initially
                  publishMotorStates(); // Publish initial consolidated state
-            } else { delay(500); }
-        } else { delay(500); }
-    }
+             } else { delay(500); }
+         } else { delay(500); }
+     }
 }
