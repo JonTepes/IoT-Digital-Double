@@ -51,24 +51,26 @@
         .machine-control-panel {
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 5px; /* Reduced gap for more compact display */
         }
         .machine-control-panel h4 {
             margin-top: 0;
             margin-bottom: 5px;
             color: #007bff;
         }
-        .machine-control-panel div { /* Za drsnike motorjev */
+        .machine-control-panel div { /* For motor sliders and sensor displays */
             display: flex;
-            align-items: center;
-            gap: 5px;
+            align-items: baseline; /* Align items to their text baseline */
+            gap: 5px; /* Reduced gap for more compact display */
         }
         .slider-value-display {
-            min-width: 50px; /* Prilagodi po potrebi za največjo možno širino številke */
-            text-align: right;
+            min-width: 20px; /* Adjusted min-width for values */
+            text-align: left; /* Align values to the left */
         }
         .machine-control-panel label {
-            min-width: 80px; /* Poravnaj oznake */
+            min-width: 15px; /* Adjusted min-width for labels */
+            text-align: left;
+            margin-right: 0px; /* Ensure no extra margin */
         }
         .machine-control-panel input[type="range"] {
             flex-grow: 1;
@@ -185,7 +187,7 @@
             <button class="conveyor-move-btn">Premakni trak</button>
 
             <!-- Color Sensor Display (initially hidden) -->
-            <div class="color-sensor-display" style="display: none; margin-top: 10px; border-top: 1px solid #eee; padding-top: 10px;">
+            <div class="color-sensor-display" style="display: none; margin-top: 5px; border-top: 1px solid #eee; padding-top: 5px;">
                 <h4>Barvni senzor:</h4>
                 <div>
                     <label>R:</label>
@@ -203,7 +205,7 @@
                     <label>C:</label>
                     <span class="color-c-display slider-value-display">0</span>
                 </div>
-                <p class="sensor-status-display" style="font-size: 0.9em; color: #666;"></p>
+                <p class="sensor-status-display" style="font-size: 0.9em; color: #666; margin-top: 5px;"></p>
             </div>
         </div>
     </template>
