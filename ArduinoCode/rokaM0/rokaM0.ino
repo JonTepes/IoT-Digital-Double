@@ -56,7 +56,7 @@ float g_targetPotAngleDegrees = 0.0f;
 bool g_controlLoopActive = false;
 const float ANGLE_TOLERANCE = 2.5f;
 
-const float KP_GAIN = 25.0f; // Proportional gain for speed control (degrees/sec per degree of error)
+const float KP_GAIN = 5.0f; // Proportional gain for speed control (degrees/sec per degree of error)
 const float MAX_MOTOR_SPEED_DEGREES_PER_SEC = 390.0f; // Max speed in degrees/sec
 const float MIN_MOTOR_SPEED_DEGREES_PER_SEC = 10.0f; // Min speed in degrees/sec (to avoid stalling)
 const float MOTOR_DIRECTION_FACTOR = 1.0f; // Adjust if motor direction needs to be inverted
