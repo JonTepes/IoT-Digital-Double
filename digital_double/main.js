@@ -3,13 +3,11 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { DragControls } from 'three/addons/controls/DragControls.js'; // Uvoz DragControls
 import { FactoryManager } from './FactoryManager.js'; // Uvoz upravitelja
 import { factoryLayout } from './FactoryLayout.js'; // Uvoz konfiguracije postavitve
-import { mqttBrokerUrl } from './config.js'; // Import the MQTT broker URL
-import mqtt from 'mqtt'; // Import MQTT for publishing messages
+import { io } from "socket.io-client"; // Import Socket.IO client
 
 console.log("Script starting...");
 
 // --- Globalne spremenljivke ---
-// mqttBrokerUrl is now imported from config.js
 
 // --- Nastavitev scene ---
 const scene = new THREE.Scene();
@@ -97,7 +95,7 @@ function worldToGrid(worldX, worldZ) {
 
 // --- Nastavitev tovarne ---
 // Instanciraj FactoryManager
-const factoryManager = new FactoryManager(scene, gridToWorld, factoryLayout, mqttBrokerUrl, unitsPerCm); // Posreduj unitsPerCm
+const factoryManager = new FactoryManager(scene, gridToWorld, factoryLayout, unitsPerCm); // Removed mqttBrokerUrl
 
 // Inicializiraj tovarno (naloži modele, poveže se z MQTT)
 // Uporabi asinhrono IIFE (Immediately Invoked Function Expression) za obravnavo asinhrone inicializacije
@@ -109,8 +107,8 @@ let conveyorCount = 0; // Števec za unikatna imena tekočih trakov
 let dragControlsInstanceId = 0; // Števec za instance DragControls za odpravljanje napak
 let craneCount = 0;    // Števec za unikatna imena dvigal
 
-// Global MQTT client instance
-let mqttClient = null;
+// Global Socket.IO client instance
+const socket = io();
 
 // Počakaj, da se DOM v celoti naloži, preden se izvede glavna logika
 document.addEventListener('DOMContentLoaded', () => {
@@ -119,14 +117,20 @@ document.addEventListener('DOMContentLoaded', () => {
     (async () => {
         try {
             // Initialize manager (connects MQTT, etc., but doesn't load models)
-            await factoryManager.initialize();
+            // Pass the socket instance to the factoryManager
+            await factoryManager.initialize(socket);
 
             // Setup drag controls (will initially have an empty array)
             setupDragControls();
             // Nastavi poslušalce gumbov uporabniškega vmesnika - ZDAJ varno za klic, ker je DOM pripravljen
             setupMenuButtons();
             setupMachineControlPanel(); // Setup the machine control panel
-            connectMqttClient(); // Connect MQTT client for publishing
+
+            // Listen for MQTT messages from the server
+            socket.on('mqtt_message', (data) => {
+                // console.log(`Received MQTT message from server via Socket.IO: Topic: ${data.topic}, Message: ${data.message}`);
+                factoryManager.handleMqttMessage(data.topic, data.message);
+            });
 
             if (canvas) { // Check canvas again just in case
                 animate();
@@ -338,34 +342,13 @@ function setupMenuButtons() {
     }
 }
 
-// --- MQTT Client Connection ---
-function connectMqttClient() {
-    if (mqttClient) {
-        return; // Prevent multiple connections
-    }
-    mqttClient = mqtt.connect(mqttBrokerUrl);
-
-    mqttClient.on('connect', () => {
-        console.log('MQTT Client Connected for publishing controls.');
-    });
-
-    mqttClient.on('error', (err) => {
-        console.error('MQTT Client Error (for controls):', err);
-    });
-}
-
-// --- Publish MQTT Message ---
+// --- Publish MQTT Message via Socket.IO ---
 function publishMqttMessage(topic, message) {
-    if (mqttClient && mqttClient.connected) {
-        mqttClient.publish(topic, JSON.stringify(message), (err) => {
-            if (err) {
-                console.error(`Failed to publish MQTT message to ${topic}:`, err);
-            } else {
-                console.log(`Published to ${topic}: ${JSON.stringify(message)}`);
-            }
-        });
+    if (socket && socket.connected) {
+        socket.emit('publish_mqtt', { topic: topic, message: JSON.stringify(message) });
+        console.log(`Emitted 'publish_mqtt' to server for topic ${topic}: ${JSON.stringify(message)}`);
     } else {
-        console.warn('MQTT client not connected. Cannot publish message.');
+        console.warn('Socket.IO client not connected. Cannot publish message.');
     }
 }
 
@@ -490,6 +473,27 @@ function setupMachineControlPanel() {
                                 { id: 2, pos: m2Pos }  // Motor 2 (roka.ino) expects cm
                             ]
                         });
+                    } else {
+                        console.warn(`Crane ${machine.name} has no control topic defined.`);
+                    }
+                });
+
+                const magnetOnBtn = panel.querySelector('.crane-magnet-on-btn');
+                const magnetOffBtn = panel.querySelector('.crane-magnet-off-btn');
+
+                magnetOnBtn.addEventListener('click', () => {
+                    const topic = machine.config.topics?.control;
+                    if (topic) {
+                        publishMqttMessage(topic, { command: 'set_magnet', state: 1 });
+                    } else {
+                        console.warn(`Crane ${machine.name} has no control topic defined.`);
+                    }
+                });
+
+                magnetOffBtn.addEventListener('click', () => {
+                    const topic = machine.config.topics?.control;
+                    if (topic) {
+                        publishMqttMessage(topic, { command: 'set_magnet', state: 0 });
                     } else {
                         console.warn(`Crane ${machine.name} has no control topic defined.`);
                     }

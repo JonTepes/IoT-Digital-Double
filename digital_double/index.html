@@ -3,45 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Single Block MQTT Test</title> <!-- Posodobljen naslov -->
+    <title>Digitalni dvojček tovarne</title>
     <style>
-        /* Osnovni CSS za odstranitev privzetih robov/drsnih trakov */
+        /* Osnovni CSS za odstranitev privzetih robov in drsnih trakov */
         body {
             margin: 0;
             overflow: hidden;
-            display: flex; /* Use flexbox for overall layout */
-            height: 100vh; /* Full viewport height */
+            display: flex; /* Uporabi flexbox za celotno postavitev */
+            height: 100vh; /* Celotna višina vidnega polja */
             font-family: Arial, sans-serif;
             color: #333;
         }
         #main-container {
             display: flex;
-            flex-grow: 1; /* Allow it to take available space */
+            flex-grow: 1; /* Omogoči, da zavzame razpoložljiv prostor */
         }
         #threejs-container {
-            flex: 3; /* Three.js takes 3 parts of space */
+            flex: 3; /* Three.js zavzame 3 dele prostora */
             display: flex;
             flex-direction: column;
-            position: relative; /* For absolute positioning of canvas if needed */
+            position: relative; /* Za absolutno pozicioniranje platna, če je potrebno */
         }
         #webgl {
             display: block;
             width: 100%;
             height: 100%;
         }
-        #machine-controls { /* New style for machine controls inside Three.js container */
+        #machine-controls { /* Nov slog za kontrole strojev znotraj Three.js kontejnerja */
             position: absolute;
-            top: 10px; /* Adjust as needed */
-            left: 10px; /* Adjust as needed */
-            background-color: rgba(255, 255, 255, 0.8); /* Semi-transparent background */
+            top: 10px; /* Prilagodi po potrebi */
+            left: 10px; /* Prilagodi po potrebi */
+            background-color: rgba(255, 255, 255, 0.8); /* Polprozorno ozadje */
             padding: 10px;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            z-index: 10; /* Ensure it's above the canvas */
-            max-width: 300px; /* Limit width */
-            display: none; /* Hidden by default, shown by JS */
-            flex-direction: column; /* Arrange content vertically */
-            gap: 10px; /* Space between elements */
+            z-index: 10; /* Zagotovi, da je nad platnom */
+            max-width: 300px; /* Omeji širino */
+            display: none; /* Privzeto skrito, prikaže JS */
+            flex-direction: column; /* Razporedi vsebino navpično */
+            gap: 10px; /* Razmik med elementi */
         }
         #machine-controls h3 {
             margin-top: 0;
@@ -58,17 +58,17 @@
             margin-bottom: 5px;
             color: #007bff;
         }
-        .machine-control-panel div { /* For motor sliders */
+        .machine-control-panel div { /* Za drsnike motorjev */
             display: flex;
             align-items: center;
             gap: 5px;
         }
         .slider-value-display {
-            min-width: 50px; /* Adjust as needed to accommodate max possible number width */
+            min-width: 50px; /* Prilagodi po potrebi za največjo možno širino številke */
             text-align: right;
         }
         .machine-control-panel label {
-            min-width: 80px; /* Align labels */
+            min-width: 80px; /* Poravnaj oznake */
         }
         .machine-control-panel input[type="range"] {
             flex-grow: 1;
@@ -87,14 +87,14 @@
             background-color: #218838;
         }
         #sidebar {
-            flex: 1; /* Sidebar takes 1 part of space */
+            flex: 1; /* Stranska vrstica zavzame 1 del prostora */
             background-color: #f0f0f0;
             padding: 15px;
-            overflow-y: auto; /* Enable scrolling for content */
+            overflow-y: auto; /* Omogoči drsenje za vsebino */
             box-shadow: -2px 0 5px rgba(0,0,0,0.1);
             display: flex;
             flex-direction: column;
-            gap: 20px; /* Space between sections */
+            gap: 20px; /* Razmik med sekcijami */
         }
         h1 {
             text-align: center;
@@ -108,28 +108,28 @@
         }
         #menu {
             display: flex;
-            flex-direction: column; /* Stack items vertically */
-            gap: 10px; /* Space between buttons */
+            flex-direction: column; /* Zloži elemente navpično */
+            gap: 10px; /* Razmik med gumbi */
         }
         #menu button {
-            display: block; /* Make buttons block-level to stack */
-            width: 100%; /* Take full width */
-            padding: 8px 12px; /* Match padding of other buttons */
+            display: block; /* Naredi gumbe blokovne, da se zložijo */
+            width: 100%; /* Zavzamejo celotno širino */
+            padding: 8px 12px; /* Ujemanje oblazinjenja drugih gumbov */
             background-color: #007bff;
             color: white;
             border: none;
             border-radius: 5px;
             cursor: pointer;
-            font-size: 16px; /* Match font size of other buttons */
+            font-size: 16px; /* Ujemanje velikosti pisave drugih gumbov */
         }
         #menu button:hover {
             background-color: #0056b3;
         }
         #camera-stream img {
             max-width: 100%;
-            height: 360px;
+            width: 600px;
             border: 1px solid #ccc;
-            box-sizing: border-box; /* Include padding and border in the element's total width and height */
+            box-sizing: border-box; /* Vključi oblazinjenje in obrobo v skupno širino in višino elementa */
         }
         #mqtt-data p {
             margin: 5px 0;
@@ -139,27 +139,26 @@
 </head>
 <body>
     <div id="main-container">
-        <!-- Three.js scene on the left -->
+        <!-- Three.js scena na levi -->
         <div id="threejs-container">
             <canvas id="webgl"></canvas>
         </div>
 
-        <!-- Sidebar on the right for camera, MQTT, and menu -->
+        <!-- Stranska vrstica na desni za kamero, MQTT in meni -->
         <div id="sidebar">
-            <h1>Factory Digital Twin</h1>
+            <h1>Digitalni dvojček tovarne</h1>
             <div id="camera-stream">
-                <h3>Camera Stream</h3>
-                <img src="/camera_stream" alt="Camera Stream">
+                <h3>Pretok kamere</h3>
+                <img src="/camera_stream" alt="Pretok kamere">
             </div>
 
-
             <div id="menu">
-                <h3>Add Machine</h3>
+                <h3>Dodaj stroj</h3>
                 <button id="add-conveyor">Dodaj tekoči trak</button>
-                <button id="add-crane">Dodaj roko</button>
+                <button id="add-crane">Dodaj žerjav</button>
                 
-                <button id="export-layout-btn">Export Layout (JSON)</button>
-                <button id="import-layout-btn">Import Layout (JSON)</button>
+                <button id="export-layout-btn">Izvozi postavitev (JSON)</button>
+                <button id="import-layout-btn">Uvozi postavitev (JSON)</button>
                 
                 <input type="file" id="import-layout-file" accept=".json" style="display: none;">
             </div>
@@ -168,30 +167,30 @@
         </div>
     </div>
 
-    <!-- Machine Controls panel - Moved inside threejs-container -->
+    <!-- Plošča za kontrole strojev - Premaknjena znotraj threejs-container -->
     <div id="machine-controls">
-        <h3>Machine Controls</h3>
+        <h3>Kontrole stroja</h3>
         <div id="controls-content">
-            <!-- Dynamic controls will be loaded here -->
+            <!-- Dinamične kontrole se bodo naložile tukaj -->
         </div>
     </div>
 
-    <!-- Templates for machine controls -->
+    <!-- Predloge za kontrole strojev -->
     <template id="conveyor-control-template">
         <div class="machine-control-panel" data-machine-name="">
-            <h4>Conveyor: <span class="machine-name-display"></span></h4>
-            <label for="conveyor-slider">Position (cm):</label>
+            <h4>Tekoči trak: <span class="machine-name-display"></span></h4>
+            <label for="conveyor-slider">Položaj (cm):</label>
             <input type="range" class="conveyor-slider" min="-10" max="10" value="0" step="0.1">
             <span class="conveyor-position-display slider-value-display">0.0 cm</span>
-            <button class="conveyor-move-btn">Move Belt</button>
+            <button class="conveyor-move-btn">Premakni trak</button>
         </div>
     </template>
 
     <template id="crane-control-template">
         <div class="machine-control-panel" data-machine-name="">
-            <h4>Crane: <span class="machine-name-display"></span></h4>
+            <h4>Žerjav: <span class="machine-name-display"></span></h4>
             <div>
-                <label for="crane-m0-slider">Motor 0 (degrees):</label>
+                <label for="crane-m0-slider">Motor 0 (stopinje):</label>
                 <input type="range" class="crane-m0-slider" min="-180" max="180" value="0" step="1">
                 <span class="crane-m0-display slider-value-display">0°</span>
             </div>
@@ -205,7 +204,11 @@
                 <input type="range" class="crane-m2-slider" min="0" max="8.5" value="0" step="0.1">
                 <span class="crane-m2-display slider-value-display">0.0 cm</span>
             </div>
-            <button class="crane-move-btn">Move All Motors</button>
+            <button class="crane-move-btn">Premakni vse motorje</button>
+            <div style="margin-top: 10px;">
+                <button class="crane-magnet-on-btn">Magnet ON</button>
+                <button class="crane-magnet-off-btn">Magnet OFF</button>
+            </div>
         </div>
     </template>
 
