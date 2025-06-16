@@ -52,6 +52,9 @@ const long colorReadInterval = 250;   // How often to read the sensor
 bool sensorInitialized = false;
 String currentStatus = "INIT";
 
+// --- Color Sensor Enable Flag ---
+const bool ENABLE_COLOR_SENSOR = true; // Set to true if this conveyor belt has a color sensor
+
 // --- Raw Color Storage ---
 uint16_t raw_r = 0;
 uint16_t raw_g = 0;
@@ -77,19 +80,24 @@ void setup() {
     // Initialize I2C for the color sensor
     // Use Wire.begin() without arguments for default ESP32 pins (SDA=21, SCL=22)
     // Or specify pins if using non-defaults: Wire.begin(SDA_PIN, SCL_PIN);
-    if (!Wire.begin()) {
-        Serial.println("Failed to start I2C communication.");
-        sensorInitialized = false;
-    } else {
-        Serial.println("I2C Initialized.");
-        if (tcs.begin()) {
-            Serial.println("Found TCS34725 sensor");
-            sensorInitialized = true;
-            readColorSensor(); // Get initial reading
-        } else {
-            Serial.println("No TCS34725 found ... check your connections");
+    if (ENABLE_COLOR_SENSOR) {
+        if (!Wire.begin()) {
+            Serial.println("Failed to start I2C communication.");
             sensorInitialized = false;
+        } else {
+            Serial.println("I2C Initialized.");
+            if (tcs.begin()) {
+                Serial.println("Found TCS34725 sensor");
+                sensorInitialized = true;
+                readColorSensor(); // Get initial reading
+            } else {
+                Serial.println("No TCS34725 found ... check your connections");
+                sensorInitialized = false;
+            }
         }
+    } else {
+        Serial.println("Color sensor disabled by ENABLE_COLOR_SENSOR flag.");
+        sensorInitialized = false; // Ensure it's false if sensor is disabled
     }
 
     mqttClient.setServer(mqttServer, mqttPort);
@@ -119,7 +127,7 @@ void loop() {
     unsigned long now = millis();
 
     // *** Read color sensor periodically (less often) ***
-    if (sensorInitialized && (now - lastColorReadTime > colorReadInterval)) {
+    if (ENABLE_COLOR_SENSOR && sensorInitialized && (now - lastColorReadTime > colorReadInterval)) {
         readColorSensor(); // Update global raw_r/g/b/c variables
         lastColorReadTime = now;
     }
@@ -259,7 +267,7 @@ void publishState(bool forceColorRead) {
     }
 
     // Read color sensor *only if forced* or if it's needed anyway
-    if (forceColorRead && sensorInitialized) {
+    if (ENABLE_COLOR_SENSOR && forceColorRead && sensorInitialized) {
         readColorSensor(); // Get the latest values immediately before publishing
     }
 
@@ -272,12 +280,21 @@ void publishState(bool forceColorRead) {
 
     doc["status"] = currentStatus; // Updated in loop()
     doc["position"] = currentCm;   // Publish position in CM
-    doc["sensor_ok"] = sensorInitialized;
+    doc["sensor_ok"] = ENABLE_COLOR_SENSOR && sensorInitialized; // Report sensor status based on flag and initialization
     doc["timestamp"] = millis(); // Use board uptime as timestamp
-    doc["color_r"] = raw_r;
-    doc["color_g"] = raw_g;
-    doc["color_b"] = raw_b;
-    doc["color_c"] = raw_c;
+
+    if (ENABLE_COLOR_SENSOR && sensorInitialized) {
+        doc["color_r"] = raw_r;
+        doc["color_g"] = raw_g;
+        doc["color_b"] = raw_b;
+        doc["color_c"] = raw_c;
+    } else {
+        // If sensor is not enabled or not initialized, send 0s or omit
+        doc["color_r"] = 0;
+        doc["color_g"] = 0;
+        doc["color_b"] = 0;
+        doc["color_c"] = 0;
+    }
 
     // Serialize JSON to a buffer
     char jsonBuffer[256];

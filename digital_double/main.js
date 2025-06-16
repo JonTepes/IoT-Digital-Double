@@ -399,6 +399,14 @@ function setupMachineControlPanel() {
         // Clear previous controls
         controlsContentDiv.innerHTML = '';
         if (currentMachineControlPanel) {
+            // Before removing, if it was a Conveyor, clear its onColorDataUpdate callback
+            const oldMachineName = currentMachineControlPanel.dataset.machineName;
+            if (oldMachineName) {
+                const oldMachine = factoryManager.getMachineByName(oldMachineName);
+                if (oldMachine && oldMachine.config.type === 'Conveyor') {
+                    oldMachine.onColorDataUpdate = null; // Deregister callback
+                }
+            }
             currentMachineControlPanel.remove();
             currentMachineControlPanel = null;
         }
@@ -421,6 +429,14 @@ function setupMachineControlPanel() {
                 const display = panel.querySelector('.conveyor-position-display');
                 const moveBtn = panel.querySelector('.conveyor-move-btn');
 
+                // Color sensor display elements
+                const colorSensorDisplayDiv = panel.querySelector('.color-sensor-display');
+                const colorRDisplay = panel.querySelector('.color-r-display');
+                const colorGDisplay = panel.querySelector('.color-g-display');
+                const colorBDisplay = panel.querySelector('.color-b-display');
+                const colorCDisplay = panel.querySelector('.color-c-display');
+                const sensorStatusDisplay = panel.querySelector('.sensor-status-display');
+
                 slider.addEventListener('input', () => {
                     display.innerText = `${slider.value} cm`;
                 });
@@ -435,6 +451,30 @@ function setupMachineControlPanel() {
                         console.warn(`Conveyor ${machine.name} has no control topic defined.`);
                     }
                 });
+
+                // Register callback for color data updates
+                machine.onColorDataUpdate = (colorData) => {
+                    if (colorData.sensor_ok && (colorData.r !== 0 || colorData.g !== 0 || colorData.b !== 0 || colorData.c !== 0)) {
+                        colorRDisplay.innerText = colorData.r;
+                        colorGDisplay.innerText = colorData.g;
+                        colorBDisplay.innerText = colorData.b;
+                        colorCDisplay.innerText = colorData.c;
+                        sensorStatusDisplay.innerText = 'Senzor: OK';
+                        colorSensorDisplayDiv.style.display = 'flex'; // Show the display
+                    } else {
+                        // Hide if sensor not OK or all values are zero
+                        colorRDisplay.innerText = 0;
+                        colorGDisplay.innerText = 0;
+                        colorBDisplay.innerText = 0;
+                        colorCDisplay.innerText = 0;
+                        sensorStatusDisplay.innerText = colorData.sensor_ok ? 'Senzor: OK (ni zaznave)' : 'Senzor: Ni na voljo';
+                        colorSensorDisplayDiv.style.display = 'none'; // Hide the display
+                    }
+                };
+
+                // Immediately update with current data if available
+                machine.onColorDataUpdate(machine.colorData);
+
             } else if (machine.config.type === 'Crane') {
                 const m0Slider = panel.querySelector('.crane-m0-slider');
                 const m0Display = panel.querySelector('.crane-m0-display');

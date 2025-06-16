@@ -7,6 +7,8 @@ export class Conveyor extends BaseMachine {
         // Specifične lastnosti tekočega traku
         this.mixer = null; // Mešalnik animacij za model
         this.animationActions = []; // Seznam animacijskih akcij
+        this.colorData = { r: 0, g: 0, b: 0, c: 0, sensor_ok: false }; // Store latest color data
+        this.onColorDataUpdate = null; // Callback function for UI updates
     }
 
     async loadModel() {
@@ -53,6 +55,22 @@ export class Conveyor extends BaseMachine {
                     }
                 }
             }
+
+            // Handle color sensor data if present in the state message
+            if (message.hasOwnProperty('color_r') && message.hasOwnProperty('color_g') &&
+                message.hasOwnProperty('color_b') && message.hasOwnProperty('color_c')) {
+                this.colorData.r = message.color_r;
+                this.colorData.g = message.color_g;
+                this.colorData.b = message.color_b;
+                this.colorData.c = message.color_c;
+                this.colorData.sensor_ok = message.sensor_ok || false; // Default to false if not present
+
+                // Trigger callback if registered
+                if (typeof this.onColorDataUpdate === 'function') {
+                    this.onColorDataUpdate(this.colorData);
+                }
+            }
+
         } else if (topic === this.config.topics?.control) {
             // Obravnava kontrolnih sporočil, poslanih iz uporabniškega vmesnika
             if (message.command === 'move' && message.hasOwnProperty('position')) {
