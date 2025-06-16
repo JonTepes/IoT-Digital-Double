@@ -66,7 +66,7 @@ bool colorValuesHaveChanged = true; // Flag to force initial publish
 void setupWifi();
 void reconnectMqtt();
 void mqttCallback(char* topic, byte* payload, unsigned int length);
-void publishState(bool forceColorRead);
+void publishState(); // Removed forceColorRead parameter
 void readColorSensor();
 long cmToSteps(float cm); // Helper function
 float stepsToCm(long steps);   // Helper function
@@ -143,16 +143,15 @@ void loop() {
     if (statusChanged || colorValuesHaveChanged) {
         currentStatus = newStatus;
         // Force a color read when stopping for the most up-to-date value
-        // Don't force read if just color changed while moving
-        bool forceRead = !isRunning;
-        publishState(forceRead);
+        // Color read is now handled ONLY by the periodic check in loop(),
+        // ensuring publishState does not introduce blocking calls.
+        publishState(); // No longer forcing color read here
         lastStateReportTime = now; // Reset periodic timer
     }
     else {
         // Periodically publish state if timer expired, even if nothing changed
         if (now - lastStateReportTime > stateReportInterval) {
-            // Don't force a color read on periodic updates, use cached values
-            publishState(false);
+            publishState(); // No longer forcing color read here
             lastStateReportTime = now;
         }
     }
@@ -223,7 +222,12 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
         // State change detection in loop() will trigger publish with fresh color read
     } else if (cmdStr == "GET_STATE") {
         Serial.println("  GET_STATE command received.");
-        publishState(true); // Force fresh read on explicit request
+        // For GET_STATE, we still want the latest color, so force a read here
+        // before publishing, but only if the sensor is enabled.
+        if (ENABLE_COLOR_SENSOR && sensorInitialized) {
+            readColorSensor();
+        }
+        publishState(); // Publish with potentially updated color data
         lastStateReportTime = millis(); // Reset timer
     } else {
         Serial.print("  Unknown command: "); Serial.println(cmdStr);
@@ -260,16 +264,14 @@ void readColorSensor() {
 }
 
 // *** Publishes state (position in CM) ***
-void publishState(bool forceColorRead) {
+void publishState() { // Removed forceColorRead parameter
     if (!mqttClient.connected()) {
         Serial.println("Cannot publish state: MQTT not connected.");
         return;
     }
 
-    // Read color sensor *only if forced* or if it's needed anyway
-    if (ENABLE_COLOR_SENSOR && forceColorRead && sensorInitialized) {
-        readColorSensor(); // Get the latest values immediately before publishing
-    }
+    // Color sensor read is now handled ONLY by the periodic check in loop(),
+    // ensuring publishState does not introduce blocking calls.
 
     // Create JSON document using the current global values
     StaticJsonDocument<256> doc;
@@ -288,13 +290,9 @@ void publishState(bool forceColorRead) {
         doc["color_g"] = raw_g;
         doc["color_b"] = raw_b;
         doc["color_c"] = raw_c;
-    } else {
-        // If sensor is not enabled or not initialized, send 0s or omit
-        doc["color_r"] = 0;
-        doc["color_g"] = 0;
-        doc["color_b"] = 0;
-        doc["color_c"] = 0;
     }
+    // If sensor is not enabled or not initialized, these fields will simply not be added to the JSON,
+    // reducing payload size for non-sensor belts.
 
     // Serialize JSON to a buffer
     char jsonBuffer[256];
@@ -345,7 +343,11 @@ void reconnectMqtt() {
             // Subscribe to the command topic
             if (mqttClient.subscribe(commandTopic)) {
                 Serial.print("Subscribed to: "); Serial.println(commandTopic);
-                publishState(true); // Publish initial state with fresh color read
+                // On initial connect, force a color read if sensor enabled, then publish state
+                if (ENABLE_COLOR_SENSOR && sensorInitialized) {
+                    readColorSensor();
+                }
+                publishState(); // Publish initial state with potentially fresh color read
                 lastStateReportTime = millis();
                 lastColorReadTime = millis(); // Reset color timer too
             } else {
