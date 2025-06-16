@@ -56,9 +56,9 @@ float g_targetPotAngleDegrees = 0.0f;
 bool g_controlLoopActive = false;
 const float ANGLE_TOLERANCE = 2.5f;
 
-const float KP_GAIN = 100.0f; // Proportional gain for speed control (degrees/sec per degree of error)
+const float KP_GAIN = 25.0f; // Proportional gain for speed control (degrees/sec per degree of error)
 const float MAX_MOTOR_SPEED_DEGREES_PER_SEC = 390.0f; // Max speed in degrees/sec
-const float MIN_MOTOR_SPEED_DEGREES_PER_SEC = 20.0f; // Min speed in degrees/sec (to avoid stalling)
+const float MIN_MOTOR_SPEED_DEGREES_PER_SEC = 10.0f; // Min speed in degrees/sec (to avoid stalling)
 const float MOTOR_DIRECTION_FACTOR = 1.0f; // Adjust if motor direction needs to be inverted
 
 // No explicit states needed, just a flag for active control
@@ -213,19 +213,17 @@ void publishMotorStates() {
     doc0["motor"] = MOTOR_ID;
     doc0["stepper_pos_deg"] = round(internalStepperDegrees * 10.0)/10.0;
 
-    switch(g_currentControlState) {
-        // Report state based on control loop activity and error
-        if (g_controlLoopActive) {
-            float error = g_targetPotAngleDegrees - g_controlPotAngleDegrees;
-            float absError = abs(error);
-            if (absError <= ANGLE_TOLERANCE) {
-                doc0["state"] = "HOLDING";
-            } else {
-                doc0["state"] = "MOVING";
-            }
+    // Report state based on control loop activity and error
+    if (g_controlLoopActive) {
+        float error = g_targetPotAngleDegrees - g_controlPotAngleDegrees;
+        float absError = abs(error);
+        if (absError <= ANGLE_TOLERANCE) {
+            doc0["state"] = "HOLDING";
         } else {
-            doc0["state"] = "IDLE";
+            doc0["state"] = "MOVING";
         }
+    } else {
+        doc0["state"] = "IDLE";
     }
 
     doc0["target_pot_angle"] = round(g_targetPotAngleDegrees * 10.0)/10.0;
