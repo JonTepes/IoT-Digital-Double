@@ -5,12 +5,13 @@ const mqtt = require('mqtt');
 const fs = require('fs');
 const path = require('path');
 const fetch = require('node-fetch');
+const config = require('./config');
 
 const app = express();
 const httpServer = createServer(app);
 const io = new Server(httpServer, { /* options */ });
 
-const port = 3000;
+const port = config.port;
 
 // Serve static files from the digital_double directory
 app.use(express.static(path.join(__dirname, 'digital_double')));
@@ -18,7 +19,7 @@ app.use(express.static(path.join(__dirname, 'digital_double')));
 // MJPG stream proxy
 app.get('/camera_stream', async (req, res) => {
   // TODO: Change to http://iotlinija.ddns.net:8081/?action=stream if needed
-  const streamUrl = 'http://localhost:8081/?action=stream';
+  const streamUrl = config.cameraStreamUrl;
   try {
     const response = await fetch(streamUrl);
 
@@ -41,7 +42,7 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'digital_double', 'index.html'));
 });
 
-const mqttClient = mqtt.connect('mqtt://192.168.1.150:1883');
+const mqttClient = mqtt.connect(config.mqttBrokerUrl);
 
 mqttClient.on('connect', () => {
   console.log('Connected to MQTT broker');
