@@ -9,6 +9,7 @@ export class Conveyor extends BaseMachine {
         this.animationActions = []; // Seznam animacijskih akcij
         this.colorData = { r: 0, g: 0, b: 0, c: 0, sensor_ok: false }; // Store latest color data
         this.onColorDataUpdate = null; // Callback function for UI updates
+        this.previousPosition = undefined; // Store the previous position to determine direction
     }
 
     async loadModel() {
@@ -41,7 +42,25 @@ export class Conveyor extends BaseMachine {
             if (message.hasOwnProperty('status')) {
                 if (this.animationActions.length > 0) {
                     if (message.status === "MOVING") {
+                        let direction = 0; // 0: no change, 1: positive, -1: negative
+                        if (message.hasOwnProperty('position')) {
+                            const currentPosition = message.position;
+                            if (this.previousPosition !== undefined) {
+                                if (currentPosition > this.previousPosition) {
+                                    direction = 1; // Moving in positive direction
+                                } else if (currentPosition < this.previousPosition) {
+                                    direction = -1; // Moving in negative direction
+                                }
+                            }
+                            this.previousPosition = currentPosition;
+                        }
+
                         this.animationActions.forEach(action => {
+                            if (direction === -1) {
+                                action.timeScale = -1; // Play animation backward
+                            } else {
+                                action.timeScale = 1; // Play animation forward (default)
+                            }
                             if (!action.isRunning()) {
                                 action.play();
                             }
