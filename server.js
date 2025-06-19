@@ -6,6 +6,7 @@ const fs = require('fs');
 const path = require('path');
 const fetch = require('node-fetch');
 const config = require('./config');
+const FactoryAutomation = require('./FactoryAutomation'); // Import FactoryAutomation
 
 const app = express();
 const httpServer = createServer(app);
@@ -46,12 +47,17 @@ const mqttClient = mqtt.connect(config.mqttBrokerUrl);
 
 mqttClient.on('connect', () => {
   console.log('Connected to MQTT broker');
-  mqttClient.subscribe('factory/data');
+  // FactoryAutomation will handle its own subscriptions
 });
 
+// Instantiate FactoryAutomation after mqttClient and io are available
+let factoryAutomation;
+
 mqttClient.on('message', (topic, message) => {
-  console.log(`Received message on topic ${topic}: ${message.toString()}`);
-  io.emit('mqtt_message', { topic: topic, message: message.toString() });
+  // Forward all relevant MQTT messages to FactoryAutomation
+  if (factoryAutomation) {
+    factoryAutomation.handleMqttMessage(topic, message.toString());
+  }
 });
 
 io.on("connection", (socket) => {
@@ -60,12 +66,22 @@ io.on("connection", (socket) => {
     console.log("user disconnected");
   });
 
-  socket.on('publish_mqtt', (data) => {
-    const { topic, message } = data;
-    console.log(`Received publish request from client for topic ${topic}: ${message}`);
-    mqttClient.publish(topic, message);
+  // Handle client requests to start/stop automation programs
+  socket.on('start_program', (data) => {
+    console.log(`Client requested to start program: ${data.programName}`);
+    if (factoryAutomation) {
+      factoryAutomation.start();
+    }
   });
 
+  socket.on('stop_program', () => {
+    console.log('Client requested to stop program.');
+    if (factoryAutomation) {
+      factoryAutomation.stop();
+    }
+  });
+
+  // Allow clients to subscribe/unsubscribe to MQTT topics directly if needed for other features
   socket.on('subscribe_mqtt', (topic) => {
     console.log(`Client requested subscription to topic: ${topic}`);
     mqttClient.subscribe(topic, (err) => {
@@ -91,4 +107,7 @@ io.on("connection", (socket) => {
 
 httpServer.listen(port, () => {
   console.log(`Server listening on port ${port}`);
+  // Initialize FactoryAutomation after server starts and MQTT client is connected
+  factoryAutomation = new FactoryAutomation(mqttClient, io);
+  factoryAutomation.initialize();
 });

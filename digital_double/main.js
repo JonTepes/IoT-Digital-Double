@@ -125,11 +125,19 @@ document.addEventListener('DOMContentLoaded', () => {
             // Nastavi poslušalce gumbov uporabniškega vmesnika - ZDAJ varno za klic, ker je DOM pripravljen
             setupMenuButtons();
             setupMachineControlPanel(); // Setup the machine control panel
+            setupAutomationControls(); // Setup the new automation controls
 
-            // Listen for MQTT messages from the server
-            socket.on('mqtt_message', (data) => {
-                // console.log(`Received MQTT message from server via Socket.IO: Topic: ${data.topic}, Message: ${data.message}`);
-                factoryManager.handleMqttMessage(data.topic, data.message);
+            // Listen for MQTT messages from the server (now handled by FactoryAutomation on server)
+            // socket.on('mqtt_message', (data) => {
+            //     factoryManager.handleMqttMessage(data.topic, data.message);
+            // });
+
+            // Listen for UI status updates from the server
+            socket.on('ui_status_update', (data) => {
+                const automationStatusElement = document.getElementById('automation-status');
+                if (automationStatusElement) {
+                    automationStatusElement.innerHTML = data.payload;
+                }
             });
 
             if (canvas) { // Check canvas again just in case
@@ -343,8 +351,10 @@ function setupMenuButtons() {
 }
 
 // --- Publish MQTT Message via Socket.IO ---
+// This function is now primarily for manual controls, as automation commands are server-side.
 function publishMqttMessage(topic, message) {
     if (socket && socket.connected) {
+        // For manual controls, we still send to the server to publish via MQTT
         socket.emit('publish_mqtt', { topic: topic, message: JSON.stringify(message) });
         console.log(`Emitted 'publish_mqtt' to server for topic ${topic}: ${JSON.stringify(message)}`);
     } else {
@@ -766,6 +776,43 @@ async function handleJsonFileImport(event) {
     };
     reader.readAsText(file);
 }
+
+// --- Automation Control Logic ---
+function setupAutomationControls() {
+    const programSelect = document.getElementById('program-select');
+    const startProgramBtn = document.getElementById('start-program-btn');
+    const stopProgramBtn = document.getElementById('stop-program-btn');
+    const automationStatusElement = document.getElementById('automation-status');
+
+    if (!programSelect || !startProgramBtn || !stopProgramBtn || !automationStatusElement) {
+        console.error("Missing automation control elements in HTML.");
+        return;
+    }
+
+    // Populate dropdown (currently hardcoded, but could be dynamic from server)
+    // The option is already in index.html, so no need to add dynamically for now.
+    // If we add more programs to FactoryAutomation.js, we'd fetch them here.
+
+    startProgramBtn.addEventListener('click', () => {
+        const selectedProgram = programSelect.value;
+        if (socket && socket.connected) {
+            socket.emit('start_program', { programName: selectedProgram });
+            console.log(`Sent 'start_program' for: ${selectedProgram}`);
+        } else {
+            console.warn('Socket.IO client not connected. Cannot start program.');
+        }
+    });
+
+    stopProgramBtn.addEventListener('click', () => {
+        if (socket && socket.connected) {
+            socket.emit('stop_program');
+            console.log('Sent \'stop_program\'');
+        } else {
+            console.warn('Socket.IO client not connected. Cannot stop program.');
+        }
+    });
+}
+
 
 // --- Zanka animacije ---
 const clock = new THREE.Clock(); // Ura za delta čas

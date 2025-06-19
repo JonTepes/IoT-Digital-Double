@@ -170,6 +170,20 @@
                 <input type="file" id="import-layout-file" accept=".json" style="display: none;">
             </div>
 
+            <div id="automation-controls">
+                <h3>Avtomatizacija tovarne</h3>
+                <div>
+                    <label for="program-select">Izberi program:</label>
+                    <select id="program-select">
+                        <!-- Programs will be dynamically loaded here -->
+                        <option value="extended_cycle">Razširjen cikel</option>
+                    </select>
+                </div>
+                <div style="margin-top: 10px;">
+                    <button id="start-program-btn" style="background-color: green;">Zaženi</button>
+                    <button id="stop-program-btn" style="background-color: red;">Ustavi</button>
+                </div>
+                <p id="automation-status" style="margin-top: 15px; font-weight: bold;">Status: Pripravljen</p>
             </div>
         </div>
     </div>
