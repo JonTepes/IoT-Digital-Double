@@ -58,7 +58,7 @@ class FactoryAutomation {
 
     stop() {
         this.systemMode = 'STOPPED';
-        this.automationState = 'IDLE';
+        this.automationState = 'CONVEYOR1_MOVING_TO_PICKUP';
         this.commandSent = false; // IMPORTANT: Unlock the listener
         console.log("System STOP command received. Halting all motors.");
         this.updateUiStatus();
