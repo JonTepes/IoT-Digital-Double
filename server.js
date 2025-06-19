@@ -69,6 +69,13 @@ io.on("connection", (socket) => {
     console.log("user disconnected");
   });
 
+  // Re-add the publish_mqtt listener for manual controls
+  socket.on('publish_mqtt', (data) => {
+    const { topic, message } = data;
+    console.log(`Received publish request from client for topic ${topic}: ${message}`);
+    mqttClient.publish(topic, message);
+  });
+
   // Handle client requests to start/stop automation programs
   socket.on('start_program', (data) => {
     console.log(`Client requested to start program: ${data.programName}`);
