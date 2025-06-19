@@ -127,10 +127,11 @@ document.addEventListener('DOMContentLoaded', () => {
             setupMachineControlPanel(); // Setup the machine control panel
             setupAutomationControls(); // Setup the new automation controls
 
-            // Listen for MQTT messages from the server (now handled by FactoryAutomation on server)
-            // socket.on('mqtt_message', (data) => {
-            //     factoryManager.handleMqttMessage(data.topic, data.message);
-            // });
+            // Listen for MQTT messages from the server
+            socket.on('mqtt_message', (data) => {
+                // console.log(`Received MQTT message from server via Socket.IO: Topic: ${data.topic}, Message: ${data.message}`);
+                factoryManager.handleMqttMessage(data.topic, data.message);
+            });
 
             // Listen for UI status updates from the server
             socket.on('ui_status_update', (data) => {
