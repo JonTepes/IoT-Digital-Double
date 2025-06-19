@@ -25,7 +25,7 @@ const float DEGREES_PER_STEP = DEGREES_PER_REVOLUTION / STEPS_PER_REVOLUTION;
 #include "credentials.h"
 
 // --- MQTT ---
-const char* mqttServer = "192.168.1.150";
+const char* mqttServer = "192.168.1.32";
 const int mqttPort = 1883;
 const char* mqttClientId = "esp32-crane-m0-consolidated"; // Consolidated Output
 const char* commandTopic = "assemblyline/crane/command";

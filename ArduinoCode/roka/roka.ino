@@ -41,7 +41,7 @@ const float CM_PER_STEP = CM_PER_MOVEMENT / STEPS_PER_MOVEMENT; // Cm per step (
 #include "credentials.h"
 
 // --- MQTT ---
-const char* mqttServer = "192.168.1.150";
+const char* mqttServer = "192.168.1.32";
 const int mqttPort = 1883;
 const char* mqttClientId = "esp32-crane-main-12"; // *** MUST BE UNIQUE ***
 const char* commandTopic = "assemblyline/crane/command";       // Listen for commands here

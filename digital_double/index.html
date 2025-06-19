@@ -60,15 +60,17 @@
         }
         .machine-control-panel div { /* For motor sliders and sensor displays */
             display: flex;
-            align-items: baseline; /* Align items to their text baseline */
+            align-items: center; /* Align items to their vertical center */
             gap: 5px; /* Reduced gap for more compact display */
         }
         .slider-value-display {
-            min-width: 20px; /* Adjusted min-width for values */
+            display: inline-block; /* Ensure width is respected */
+            width: 45px; /* Fixed width for values to prevent shifting */
             text-align: left; /* Align values to the left */
         }
         .machine-control-panel label {
-            min-width: 15px; /* Adjusted min-width for labels */
+            display: inline-block; /* Ensure width is respected */
+            width: 120px; /* Fixed width for labels to prevent shifting */
             text-align: left;
             margin-right: 0px; /* Ensure no extra margin */
         }

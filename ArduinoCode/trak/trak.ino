@@ -32,11 +32,11 @@ const float CM_PER_STEP = CM_PER_MOVEMENT / STEPS_PER_MOVEMENT; // Cm per step (
 #include "credentials.h"
 
 // --- MQTT ---
-const char* mqttServer = "192.168.1.150";
+const char* mqttServer = "192.168.1.32";
 const int mqttPort = 1883;
-const char* mqttClientId = "esp32-conveyor";
-const char* commandTopic = "assemblyline/conveyor/command";
-const char* stateTopic = "assemblyline/conveyor/state"; // Corrected topic typo
+const char* mqttClientId = "esp32-conveyor2";
+const char* commandTopic = "assemblyline/conveyor2/command";
+const char* stateTopic = "assemblyline/conveyor2/state"; // Corrected topic typo
 
 // --- Globalni objekti ---
 WiFiClient espClient;
