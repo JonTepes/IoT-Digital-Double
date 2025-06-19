@@ -315,6 +315,10 @@ class FactoryAutomation {
         // --- ACTION ---
         if (command_msg) {
             // A decision was made. Lock the listener and send the command(s).
+            // Set the lock BEFORE sending commands
+            this.commandSent = true;
+            this.updateUiStatus(); // Update UI to show "LOCKED" state if applicable
+
             if (Array.isArray(command_msg)) {
                 command_msg.forEach(cmd => {
                     this.publishMqttCommand(cmd.topic, cmd.payload);
@@ -323,13 +327,12 @@ class FactoryAutomation {
                 this.publishMqttCommand(command_msg.topic, command_msg.payload);
             } else {
                 // This is the "No command, just triggering UI update and delay" case
-                // The unlockListener will be called by the setTimeout in publishMqttCommand,
-                // but since no actual MQTT command is sent, we need to manually unlock here.
-                // Or, better, ensure this case doesn't set commandSent to true.
-                // For now, I'll just call unlockListener directly for this specific case.
-                this.unlockListener();
+                // No actual MQTT command is sent, so we can unlock immediately or after a short UI delay.
+                // Node-RED had a delay here, so let's keep a small delay for consistency.
+                console.log("No MQTT command to send, but state transition occurred. Unlocking listener after delay.");
             }
-            this.updateUiStatus();
+            // Start a single timer to unlock the listener after all commands are initiated
+            setTimeout(() => this.unlockListener(), 1000); // 1000ms (1 second) delay, as requested
         }
     }
 }
