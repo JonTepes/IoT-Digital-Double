@@ -54,7 +54,10 @@ mqttClient.on('connect', () => {
 let factoryAutomation;
 
 mqttClient.on('message', (topic, message) => {
-  // Forward all relevant MQTT messages to FactoryAutomation
+  // Emit all MQTT messages to connected Socket.IO clients for digital twin updates
+  io.emit('mqtt_message', { topic: topic, message: message.toString() });
+
+  // Forward relevant MQTT messages to FactoryAutomation for automation logic
   if (factoryAutomation) {
     factoryAutomation.handleMqttMessage(topic, message.toString());
   }
