@@ -46,7 +46,7 @@ class FactoryAutomation {
             return;
         }
         this.systemMode = 'RUNNING';
-        this.automationState = 'CONVEYOR1_MOVING_TO_PICKUP'; // Ensure it starts from IDLE
+        this.automationState = 'IDLE'; // Ensure it starts from IDLE
         this.commandSent = false; // Ensure lock is off at start
         this.craneMotorStatus = { m0: false, m1: false, m2: false };
         console.log("System START command received. Priming system by requesting conveyor state.");
