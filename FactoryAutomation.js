@@ -156,20 +156,13 @@ class FactoryAutomation {
 
             case 'CONVEYOR1_MOVING_TO_PICKUP':
                 if (topic === 'assemblyline/conveyor/state' && payload.status === 'IDLE') {
-                    let target = this.conveyor1PickupPos;
-                    let actual = payload.position;
-                    if (Math.abs(actual - target) < 0.2) {
-                        console.warn(`Conveyor at pickup position (${actual}cm). Starting crane sequence.`);
-                        this.automationState = 'CRANE_MOVING_TO_PICKUP_XY';
-                        this.craneMotorStatus = { m0: false, m1: false, m2: true }; // m2 is true because it's not moving yet
-                        const cmd_m0 = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 0, pos: -40.0 }] }) };
-                        const cmd_m1 = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 1, pos: 7.7 }] }) };
-                        command_msg = [cmd_m0, cmd_m1]; // Send multiple commands
-                    } else {
-                        console.error(`Conveyor stopped at wrong position! Halting.`);
-                        this.systemMode = 'STOPPED';
-                        this.updateUiStatus();
-                    }
+                    // Assuming conveyor always stops at the right position as per user's instruction
+                    console.warn(`Conveyor at pickup position. Starting crane sequence.`);
+                    this.automationState = 'CRANE_MOVING_TO_PICKUP_XY';
+                    this.craneMotorStatus = { m0: false, m1: false, m2: true }; // m2 is true because it's not moving yet
+                    const cmd_m0 = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 0, pos: -40.0 }] }) };
+                    const cmd_m1 = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 1, pos: 7.7 }] }) };
+                    command_msg = [cmd_m0, cmd_m1]; // Send multiple commands
                 }
                 break;
 
