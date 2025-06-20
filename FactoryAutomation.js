@@ -272,7 +272,7 @@ class FactoryAutomation {
                     console.warn("Crane at safe height. Moving to final X/Y.");
                     this.automationState = 'CRANE_MOVING_TO_FINAL_POS_XY';
                     this.craneMotorStatus = { m0: false, m1: false, m2: true };
-                    const cmd_m0_f = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 0, pos: -65.0 }] }) };
+                    const cmd_m0_f = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 0, pos: -55.0 }] }) };
                     const cmd_m1_f = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 1, pos: 15.0 }] }) };
                     command_msg = [cmd_m0_f, cmd_m1_f];
                 }
