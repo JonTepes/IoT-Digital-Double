@@ -160,7 +160,7 @@ class FactoryAutomation {
                     console.warn(`Conveyor at pickup position. Starting crane sequence.`);
                     this.automationState = 'CRANE_MOVING_TO_PICKUP_XY';
                     this.craneMotorStatus = { m0: false, m1: false, m2: true }; // m2 is true because it's not moving yet
-                    const cmd_m0 = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 0, pos: -40.0 }] }) };
+                    const cmd_m0 = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 0, pos: -35.0 }] }) };
                     const cmd_m1 = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 1, pos: 7.7 }] }) };
                     command_msg = [cmd_m0, cmd_m1]; // Send multiple commands
                 }
@@ -203,7 +203,7 @@ class FactoryAutomation {
                     console.warn("Crane at safe height. Moving to dropoff X/Y.");
                     this.automationState = 'CRANE_MOVING_TO_DROPOFF_XY';
                     this.craneMotorStatus = { m0: false, m1: false, m2: true };
-                    const cmd_m0_d = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 0, pos: 57.5 }] }) };
+                    const cmd_m0_d = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 0, pos: 52.5 }] }) };
                     const cmd_m1_d = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 1, pos: 12.0 }] }) };
                     command_msg = [cmd_m0_d, cmd_m1_d];
                 }
@@ -229,7 +229,7 @@ class FactoryAutomation {
                     console.warn(`Magnet OFF. Moving to second location X/Y.`);
                     this.automationState = 'CRANE_MOVING_TO_SECOND_POS_XY';
                     this.craneMotorStatus = { m0: false, m1: false, m2: true };
-                    const cmd_m0_s = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 0, pos: 90.0 }] }) };
+                    const cmd_m0_s = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 0, pos: 82.5 }] }) };
                     const cmd_m1_s = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 1, pos: 10.5 }] }) };
                     command_msg = [cmd_m0_s, cmd_m1_s];
                 }

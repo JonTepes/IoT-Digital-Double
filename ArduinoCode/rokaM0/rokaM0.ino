@@ -37,10 +37,10 @@ unsigned long lastStateReportTime = 0;
 const long stateReportInterval = 250;
 // No lastPotReportTime or potReportInterval needed as it's part of motorStateTopic
 
-const int ADC_AT_ZERO_DEGREES = 670;
-const float ANGLE_AT_ZERO_DEGREES_POINT = -170.0f;
-const int ADC_AT_NINETY_DEGREES = 1995;
-const float ANGLE_AT_NINETY_DEGREES_POINT = 190.0f;
+const int ADC_AT_ZERO_DEGREES = 1322;
+const float ANGLE_AT_ZERO_DEGREES_POINT = -9.0f;
+const int ADC_AT_NINETY_DEGREES = 1992;
+const float ANGLE_AT_NINETY_DEGREES_POINT = -90.0f;
 const float DEGREES_PER_ADC_TICK = (ANGLE_AT_NINETY_DEGREES_POINT - ANGLE_AT_ZERO_DEGREES_POINT) / (ADC_AT_NINETY_DEGREES - ADC_AT_ZERO_DEGREES);
 
 int g_lastRawAdcValue = 0;
