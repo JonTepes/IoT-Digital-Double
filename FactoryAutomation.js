@@ -297,7 +297,7 @@ class FactoryAutomation {
                 if (topic === 'assemblyline/crane/motor_state' && payload.component === 'magnet' && payload.state === 0) {
                     console.warn(`Final magnet deactivation OFF. Moving conveyor 2.`);
                     this.automationState = 'CONVEYOR2_MOVING';
-                    command_msg = { topic: 'assemblyline/conveyor2/command', payload: { command: "MOVE_REL", value: -6.0 } };
+                    command_msg = { topic: 'assemblyline/conveyor2/command', payload: { command: "MOVE_REL", value: -9.0 } };
                 }
                 break;
 
