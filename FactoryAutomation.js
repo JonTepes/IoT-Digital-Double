@@ -46,7 +46,7 @@ class FactoryAutomation {
             return;
         }
         this.systemMode = 'RUNNING';
-        this.automationState = 'IDLE'; // Ensure it starts from IDLE
+        this.automationState = 'FEEDER_ACTIVATING'; // Start with feeder activation
         this.commandSent = false; // Ensure lock is off at start
         this.craneMotorStatus = { m0: false, m1: false, m2: false };
         console.log("System START command received. Priming system by requesting conveyor state.");
@@ -125,6 +125,24 @@ class FactoryAutomation {
         this.updateUiStatus();
 
         switch (this.automationState) {
+            // --- Feeder Sequence ---
+            case 'FEEDER_ACTIVATING':
+                console.warn("Activating feeder to move block onto conveyor.");
+                this.automationState = 'WAITING_FOR_FEEDER_COMPLETE';
+                command_msg = { topic: 'assemblyline/conveyor/command', payload: { command: "FEED_BLOCK" } };
+                break;
+
+            case 'WAITING_FOR_FEEDER_COMPLETE':
+                // The feeder action is quick and doesn't have a separate state topic.
+                // We assume it's complete after the command is sent and a short delay.
+                // Transition back to IDLE to check the conveyor sensor for the new block.
+                console.warn("Feeder moved block. Transitioning to IDLE to check conveyor sensor.");
+                this.automationState = 'IDLE';
+                // No command, just state transition
+                break;
+
+            // --- Feeder Sequence ---
+
             // --- Conveyor 1 Sequence ---
             case 'IDLE':
                 if (topic === 'assemblyline/conveyor/state' && payload.sensor_ok) {
@@ -226,76 +244,7 @@ class FactoryAutomation {
 
             case 'DEACTIVATING_MAGNET_FIRST_TIME':
                 if (topic === 'assemblyline/crane/motor_state' && payload.component === 'magnet' && payload.state === 0) {
-                    console.warn(`Magnet OFF. Moving to second location X/Y.`);
-                    this.automationState = 'CRANE_MOVING_TO_SECOND_POS_XY';
-                    this.craneMotorStatus = { m0: false, m1: false, m2: true };
-                    const cmd_m0_s = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 0, pos: 82.5 }] }) };
-                    const cmd_m1_s = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 1, pos: 10.5 }] }) };
-                    command_msg = [cmd_m0_s, cmd_m1_s];
-                }
-                break;
-
-            // --- NEW: Crane Second Pickup/Dropoff ---
-            case 'CRANE_MOVING_TO_SECOND_POS_XY':
-                if (topic === 'assemblyline/crane/motor_state') {
-                    if (payload.motor === 0 || payload.motor === 1) {
-                        if (payload.state === 'IDLE' || payload.state === 'HOLDING') {
-                            this.craneMotorStatus[`m${payload.motor}`] = true;
-                        }
-                    }
-                    if (this.craneMotorStatus.m0 && this.craneMotorStatus.m1) {
-                        console.warn("Crane at second pos X/Y. Lowering to Z.");
-                        this.automationState = 'CRANE_LOWERING_AT_SECOND_POS_Z';
-                        command_msg = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 2, pos: 6.5 }] }) };
-                    }
-                }
-                break;
-
-            case 'CRANE_LOWERING_AT_SECOND_POS_Z':
-                if (topic === 'assemblyline/crane/motor_state' && payload.motor === 2 && payload.state === 'IDLE') {
-                    console.warn("Crane at second pos Z. Activating magnet.");
-                    this.automationState = 'ACTIVATING_MAGNET_SECOND_TIME';
-                    command_msg = { topic: 'assemblyline/crane/command', payload: JSON.stringify({ command: "set_magnet", state: 1 }) };
-                }
-                break;
-
-            case 'ACTIVATING_MAGNET_SECOND_TIME':
-                if (topic === 'assemblyline/crane/motor_state' && payload.component === 'magnet' && payload.state === 1) {
-                    console.warn(`Second magnet activation ON. Raising to safe height.`);
-                    this.automationState = 'CRANE_RAISING_AFTER_SECOND_PICKUP';
-                    command_msg = { topic: 'assemblyline/crane/command', payload: JSON.stringify({ command: "move_all", motors: [{ id: 2, pos: 1.5 }] }) };
-                }
-                break;
-
-            case 'CRANE_RAISING_AFTER_SECOND_PICKUP':
-                if (topic === 'assemblyline/crane/motor_state' && payload.motor === 2 && payload.state === 'IDLE') {
-                    console.warn("Crane at safe height. Moving to final X/Y.");
-                    this.automationState = 'CRANE_MOVING_TO_FINAL_POS_XY';
-                    this.craneMotorStatus = { m0: false, m1: false, m2: true };
-                    const cmd_m0_f = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 0, pos: -55.0 }] }) };
-                    const cmd_m1_f = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 1, pos: 15.0 }] }) };
-                    command_msg = [cmd_m0_f, cmd_m1_f];
-                }
-                break;
-
-            case 'CRANE_MOVING_TO_FINAL_POS_XY':
-                if (topic === 'assemblyline/crane/motor_state') {
-                    if (payload.motor === 0 || payload.motor === 1) {
-                        if (payload.state === 'IDLE' || payload.state === 'HOLDING') {
-                            this.craneMotorStatus[`m${payload.motor}`] = true;
-                        }
-                    }
-                    if (this.craneMotorStatus.m0 && this.craneMotorStatus.m1) {
-                        console.warn("Crane at final pos X/Y. Deactivating magnet.");
-                        this.automationState = 'DEACTIVATING_MAGNET_FINAL_TIME';
-                        command_msg = { topic: 'assemblyline/crane/command', payload: JSON.stringify({ command: "set_magnet", state: 0 }) };
-                    }
-                }
-                break;
-
-            case 'DEACTIVATING_MAGNET_FINAL_TIME':
-                if (topic === 'assemblyline/crane/motor_state' && payload.component === 'magnet' && payload.state === 0) {
-                    console.warn(`Final magnet deactivation OFF. Moving conveyor 2.`);
+                    console.warn(`Magnet OFF. Moving conveyor 2.`);
                     this.automationState = 'CONVEYOR2_MOVING';
                     command_msg = { topic: 'assemblyline/conveyor2/command', payload: { command: "MOVE_REL", value: -9.0 } };
                 }
@@ -304,8 +253,8 @@ class FactoryAutomation {
             // --- Final Step & Loop ---
             case 'CONVEYOR2_MOVING':
                 if (topic === 'assemblyline/conveyor2/state' && payload.status === 'IDLE') {
-                    console.warn("Cycle complete. Resetting to IDLE.");
-                    this.automationState = 'IDLE';
+                    console.warn("Cycle complete. Resetting to FEEDER_ACTIVATING.");
+                    this.automationState = 'FEEDER_ACTIVATING'; // Loop back to feeder activation
                     // No command to send, just triggering UI update and delay
                     command_msg = { payload: "No command, just triggering UI update and delay" };
                 }

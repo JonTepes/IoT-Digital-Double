@@ -44,9 +44,9 @@ const float CM_PER_STEP = CM_PER_MOVEMENT / STEPS_PER_MOVEMENT; // Cm per step (
 // --- MQTT ---
 const char* mqttServer = "192.168.1.32";
 const int mqttPort = 1883;
-const char* mqttClientId = "esp32-conveyor2";
-const char* commandTopic = "assemblyline/conveyor2/command";
-const char* stateTopic = "assemblyline/conveyor2/state"; // Corrected topic typo
+const char* mqttClientId = "esp32-conveyor";
+const char* commandTopic = "assemblyline/conveyor/command";
+const char* stateTopic = "assemblyline/conveyor/state"; // Corrected topic typo
 
 // --- Globalni objekti ---
 WiFiClient espClient;
@@ -111,9 +111,9 @@ void setup() {
 
     // Initialize Feeder Servo
     if (ENABLE_FEEDER_SERVO) {
-        Servo::set  MinMaxMicro(500, 2500); // Set standard servo pulse width limits
-        feederServo.attach(FEEDER_SERVO_PIN); // Attaches the servo on FEEDER_SERVO_PIN to the servo object
-        feederServo.write(SERVO_LEFT_ANGLE); // Set to resting position
+        feederServo.setPeriodHertz(50); // Standard 50hz servo
+        feederServo.attach(FEEDER_SERVO_PIN, 500, 2500); // Attaches the servo on FEEDER_SERVO_PIN to the servo object, with min/max pulse width
+        feederServo.write(SERVO_RIGHT_ANGLE); // Set to resting position
         Serial.println("Feeder servo initialized using ESP32Servo.");
     } else {
         Serial.println("Feeder servo disabled by ENABLE_FEEDER_SERVO flag.");
