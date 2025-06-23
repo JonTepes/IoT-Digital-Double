@@ -463,6 +463,20 @@ function setupMachineControlPanel() {
                     }
                 });
 
+                // Feeder servo control button
+                const feederFeedBtn = panel.querySelector('.feeder-feed-btn');
+                if (feederFeedBtn) {
+                    feederFeedBtn.addEventListener('click', () => {
+                        const topic = machine.config.topics?.control;
+                        if (topic) {
+                            // Conveyor expects JSON: {"command": "FEED_BLOCK"}
+                            publishMqttMessage(topic, { command: 'FEED_BLOCK' });
+                        } else {
+                            console.warn(`Conveyor ${machine.name} has no control topic defined.`);
+                        }
+                    });
+                }
+
                 // Register callback for color data updates
                 machine.onColorDataUpdate = (colorData) => {
                     if (colorData.sensor_ok && (colorData.r !== 0 || colorData.g !== 0 || colorData.b !== 0 || colorData.c !== 0)) {

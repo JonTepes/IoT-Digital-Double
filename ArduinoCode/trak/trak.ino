@@ -5,15 +5,25 @@
 #include <Adafruit_TCS34725.h>
 #include <ArduinoJson.h>
 #include <math.h> // For round()
+#include <ESP32Servo.h> // Include the ESP32Servo library
 
 // --- Definicije pinov ---
 #define CONVEYOR_P1 1 // IN1
 #define CONVEYOR_P2 2 // IN2
 #define CONVEYOR_P3 3 // IN3
 #define CONVEYOR_P4 4 // IN4
+// --- Feeder Servo Definitions ---
+#define FEEDER_SERVO_PIN 21 // GPIO pin for the feeder servo
+const int SERVO_LEFT_ANGLE = 10;  // Angle for pushing block (adjust as needed)
+const int SERVO_RIGHT_ANGLE = 80; // Angle for resting position (adjust as needed)
 
 // Use default I2C pins (SDA=8, SCL=9 on some ESP32 boards, adjust if needed)
-// For standard ESP32: SDA=21, SCL=22
+
+// --- Color Sensor Enable Flag ---
+const bool ENABLE_COLOR_SENSOR = true; // Set to true if this conveyor belt has a color sensor
+
+// --- Feeder Servo Enable Flag ---
+const bool ENABLE_FEEDER_SERVO = true; // Set to true if this conveyor belt has a feeder servo
 
 AccelStepper conveyorStepper(AccelStepper::HALF4WIRE, CONVEYOR_P1, CONVEYOR_P3, CONVEYOR_P2, CONVEYOR_P4);
 
@@ -42,6 +52,7 @@ const char* stateTopic = "assemblyline/conveyor2/state"; // Corrected topic typo
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
 Adafruit_TCS34725 tcs = Adafruit_TCS34725(TCS34725_INTEGRATIONTIME_2_4MS, TCS34725_GAIN_16X);
+Servo feederServo; // Create a Servo object for ESP32Servo
 
 // --- Timing & State ---
 unsigned long lastStateReportTime = 0;
@@ -51,9 +62,6 @@ const long colorReadInterval = 250;   // How often to read the sensor
 
 bool sensorInitialized = false;
 String currentStatus = "INIT";
-
-// --- Color Sensor Enable Flag ---
-const bool ENABLE_COLOR_SENSOR = true; // Set to true if this conveyor belt has a color sensor
 
 // --- Raw Color Storage ---
 uint16_t raw_r = 0;
@@ -68,6 +76,7 @@ void reconnectMqtt();
 void mqttCallback(char* topic, byte* payload, unsigned int length);
 void publishState(); // Removed forceColorRead parameter
 void readColorSensor();
+void controlFeederServo(const char* action); // Prototype for feeder servo control
 long cmToSteps(float cm); // Helper function
 float stepsToCm(long steps);   // Helper function
 
@@ -98,6 +107,16 @@ void setup() {
     } else {
         Serial.println("Color sensor disabled by ENABLE_COLOR_SENSOR flag.");
         sensorInitialized = false; // Ensure it's false if sensor is disabled
+    }
+
+    // Initialize Feeder Servo
+    if (ENABLE_FEEDER_SERVO) {
+        Servo::set  MinMaxMicro(500, 2500); // Set standard servo pulse width limits
+        feederServo.attach(FEEDER_SERVO_PIN); // Attaches the servo on FEEDER_SERVO_PIN to the servo object
+        feederServo.write(SERVO_LEFT_ANGLE); // Set to resting position
+        Serial.println("Feeder servo initialized using ESP32Servo.");
+    } else {
+        Serial.println("Feeder servo disabled by ENABLE_FEEDER_SERVO flag.");
     }
 
     mqttClient.setServer(mqttServer, mqttPort);
@@ -229,6 +248,13 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
         }
         publishState(); // Publish with potentially updated color data
         lastStateReportTime = millis(); // Reset timer
+    } else if (cmdStr == "FEED_BLOCK") {
+        Serial.println("  FEED_BLOCK command received.");
+        if (ENABLE_FEEDER_SERVO) {
+            controlFeederServo("PUSH");
+        } else {
+            Serial.println("  Feeder servo is disabled.");
+        }
     } else {
         Serial.print("  Unknown command: "); Serial.println(cmdStr);
     }
@@ -362,5 +388,19 @@ void reconnectMqtt() {
             // Wait 5 seconds before retrying
             delay(5000);
         }
+    }
+}
+
+// --- Feeder Servo Control Function ---
+void controlFeederServo(const char* action) {
+    if (strcmp(action, "PUSH") == 0) {
+        Serial.println("Feeder: Pushing block...");
+        feederServo.write(SERVO_LEFT_ANGLE); // Move to push position
+        delay(500); // Wait for servo to move
+        feederServo.write(SERVO_RIGHT_ANGLE); // Return to resting position
+        Serial.println("Feeder: Returned to resting position.");
+    } else {
+        Serial.print("Unknown feeder action: ");
+        Serial.println(action);
     }
 }
