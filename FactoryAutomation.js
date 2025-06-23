@@ -152,7 +152,7 @@ class FactoryAutomation {
                         command_msg = { topic: 'assemblyline/conveyor/command', payload: { command: "MOVE_REL", value: 1000 } };
                     } else {
                         let currentPos = payload.position;
-                        let targetPos = currentPos + 4.0;
+                        let targetPos = currentPos + 5.5;
                         console.warn(`Object already present (c=${payload.color_c}). Moving to pickup pos: ${targetPos}cm.`);
                         this.conveyor1PickupPos = targetPos;
                         this.automationState = 'CONVEYOR1_MOVING_TO_PICKUP';
