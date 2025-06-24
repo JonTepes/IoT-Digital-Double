@@ -807,6 +807,17 @@ function setupAutomationControls() {
     // Populate dropdown (currently hardcoded, but could be dynamic from server)
     // The option is already in index.html, so no need to add dynamically for now.
     // If we add more programs to FactoryAutomation.js, we'd fetch them here.
+ 
+    // Add event listener for program selection change
+    programSelect.addEventListener('change', () => {
+        const selectedProgram = programSelect.value;
+        if (socket && socket.connected) {
+            socket.emit('switch_program', { programName: selectedProgram });
+            console.log(`Sent 'switch_program' for: ${selectedProgram}`);
+        } else {
+            console.warn('Socket.IO client not connected. Cannot switch program.');
+        }
+    });
 
     startProgramBtn.addEventListener('click', () => {
         const selectedProgram = programSelect.value;
@@ -817,7 +828,7 @@ function setupAutomationControls() {
             console.warn('Socket.IO client not connected. Cannot start program.');
         }
     });
-
+ 
     stopProgramBtn.addEventListener('click', () => {
         if (socket && socket.connected) {
             socket.emit('stop_program');

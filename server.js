@@ -91,6 +91,14 @@ io.on("connection", (socket) => {
     }
   });
 
+  // Handle client requests to switch automation programs
+  socket.on('switch_program', (data) => {
+    console.log(`Client requested to switch program to: ${data.programName}`);
+    if (factoryAutomation) {
+      factoryAutomation.switchAutomationProgram(data.programName);
+    }
+  });
+
   // Allow clients to subscribe/unsubscribe to MQTT topics directly if needed for other features
   socket.on('subscribe_mqtt', (topic) => {
     console.log(`Client requested subscription to topic: ${topic}`);

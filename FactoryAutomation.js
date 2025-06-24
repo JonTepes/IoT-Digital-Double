@@ -1,4 +1,5 @@
 const BasicCycle = require('./automation_programs/BasicCycle');
+const ColorSortingCycle = require('./automation_programs/ColorSortingCycle');
 
 class FactoryAutomation {
     constructor(mqttClient, io) {
@@ -10,7 +11,10 @@ class FactoryAutomation {
         this.commandSent = false; // Lock to prevent re-entry while a command is being processed
         this.craneMotorStatus = { m0: false, m1: false, m2: false }; // For multi-motor waits
         this.conveyor1PickupPos = 0; // Stores the calculated pickup position for conveyor 1
-        this.activeAutomationProgram = new BasicCycle(this); // Instantiate the Basic Cycle program
+        this.basicCycle = new BasicCycle(this);
+        this.colorSortingCycle = new ColorSortingCycle(this);
+        this.activeAutomationProgram = this.basicCycle; // Default to BasicCycle
+        this.selectedAutomationProgram = 'BasicCycle'; // To track which program is active
 
         this.setupMqttSubscriptions();
     }
@@ -41,7 +45,7 @@ class FactoryAutomation {
         this.automationState = 'FEEDER_ACTIVATING'; // Start with feeder activation
         this.commandSent = false; // Ensure lock is off at start
         this.craneMotorStatus = { m0: false, m1: false, m2: false };
-        console.log("System START command received. Priming system by requesting conveyor state.");
+        console.log(`System START command received. Active program: ${this.selectedAutomationProgram}. Priming system by requesting conveyor state.`);
         this.updateUiStatus();
 
         // Prime the system by requesting conveyor state, similar to Node-RED
@@ -83,8 +87,33 @@ class FactoryAutomation {
     }
 
     updateUiStatus() {
-        const statusMessage = `System: ${this.systemMode}<br>Process: ${this.automationState}`;
+        const statusMessage = `System: ${this.systemMode}<br>Program: ${this.selectedAutomationProgram}<br>Process: ${this.automationState}`;
         this.io.emit('ui_status_update', { payload: statusMessage });
+    }
+
+    // New method to switch automation programs
+    switchAutomationProgram(programName) {
+        if (this.systemMode === 'RUNNING') {
+            console.warn("Cannot switch automation program while system is RUNNING. Please STOP first.");
+            return false;
+        }
+        switch (programName) {
+            case 'BasicCycle':
+                this.activeAutomationProgram = this.basicCycle;
+                this.selectedAutomationProgram = 'BasicCycle';
+                console.log("Switched to Basic Cycle program.");
+                break;
+            case 'ColorSortingCycle':
+                this.activeAutomationProgram = this.colorSortingCycle;
+                this.selectedAutomationProgram = 'ColorSortingCycle';
+                console.log("Switched to Color Sorting Cycle program.");
+                break;
+            default:
+                console.warn(`Unknown automation program: ${programName}`);
+                return false;
+        }
+        this.updateUiStatus();
+        return true;
     }
 
     handleMqttMessage(topic, message) {
