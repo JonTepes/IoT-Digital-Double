@@ -61,6 +61,10 @@ class ColorSortingCycle {
                         this.fa.automationState = 'CONVEYOR1_MOVING_TO_PICKUP';
                         command_msg = { topic: 'assemblyline/conveyor/command', payload: { command: "MOVE_ABS", value: targetPos } };
                         // Determine block color based on RGB values
+                        this.fa.currentBlockR = payload.r;
+                        this.fa.currentBlockG = payload.g;
+                        this.fa.currentBlockB = payload.b;
+                        this.fa.currentBlockC = payload.c;
                         if (payload.b > BLUE_THRESHOLD_B_MIN && payload.r < BLUE_THRESHOLD_RG_MAX && payload.g < BLUE_THRESHOLD_RG_MAX) {
                             this.blockColor = 'blue';
                             console.warn("Detected: Blue block.");
@@ -84,6 +88,10 @@ class ColorSortingCycle {
                     this.fa.automationState = 'CONVEYOR1_MOVING_TO_PICKUP';
                     command_msg = { topic: 'assemblyline/conveyor/command', payload: { command: "MOVE_ABS", value: targetPos } };
                     // Determine block color based on RGB values
+                    this.fa.currentBlockR = payload.r;
+                    this.fa.currentBlockG = payload.g;
+                    this.fa.currentBlockB = payload.b;
+                    this.fa.currentBlockC = payload.c;
                     if (payload.b > BLUE_THRESHOLD_B_MIN && payload.r < BLUE_THRESHOLD_RG_MAX && payload.g < BLUE_THRESHOLD_RG_MAX) {
                         this.blockColor = 'blue';
                         console.warn("Detected: Blue block.");
@@ -195,6 +203,10 @@ class ColorSortingCycle {
                     console.warn("Cycle complete. Resetting to FEEDER_ACTIVATING.");
                     this.fa.automationState = 'FEEDER_ACTIVATING'; // Loop back to feeder activation
                     this.blockColor = null; // Reset block color for the next cycle
+                    this.fa.currentBlockR = 'none';
+                    this.fa.currentBlockG = 'none';
+                    this.fa.currentBlockB = 'none';
+                    this.fa.currentBlockC = 'none';
                     // No command to send, just triggering UI update and delay
                     command_msg = { payload: "No command, just triggering UI update and delay" };
                 }

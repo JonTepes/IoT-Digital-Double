@@ -16,6 +16,11 @@ class FactoryAutomation {
         this.activeAutomationProgram = this.basicCycle; // Default to BasicCycle
         this.selectedAutomationProgram = 'BasicCycle'; // To track which program is active
 
+        this.currentBlockR = 'none';
+        this.currentBlockG = 'none';
+        this.currentBlockB = 'none';
+        this.currentBlockC = 'none';
+
         this.setupMqttSubscriptions();
     }
 
@@ -87,7 +92,7 @@ class FactoryAutomation {
     }
 
     updateUiStatus() {
-        const statusMessage = `System: ${this.systemMode}<br>Program: ${this.selectedAutomationProgram}<br>Process: ${this.automationState}`;
+        const statusMessage = `System: ${this.systemMode}<br>Program: ${this.selectedAutomationProgram}<br>Process: ${this.automationState}<br>Block Color: ${this.blockColor}<br>R: ${this.currentBlockR}, G: ${this.currentBlockG}, B: ${this.currentBlockB}, C: ${this.currentBlockC}`;
         this.io.emit('ui_status_update', { payload: statusMessage });
     }
 
