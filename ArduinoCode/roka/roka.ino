@@ -5,33 +5,33 @@
 #include <math.h>       // For round()
 
 // --- Definicije pinov ---
-// Motor 1 (Naprej/Nazaj) - Connected to THIS ESP
+// Motor 1 (Naprej/Nazaj) - Povezan na ta ESP
 #define M1_P1 1  // Verify these pins are free and work on this ESP
 #define M1_P2 2
 #define M1_P3 3
 #define M1_P4 4
-// Motor 2 (Gor/Dol) - Connected to THIS ESP
+// Motor 2 (Gor/Dol) - Povezan na ta ESP
 #define M2_P1 5  // Verify these pins are free and work on this ESP
 #define M2_P2 6
 #define M2_P3 7
 #define M2_P4 8
 
-// *** Electromagnet Pin ***
+// Pin elektromagneta
 #define MAGNET_PIN 0 // Using GPIO0 for the electromagnet relay/driver
 
 // --- Objekti motorjev ---
 AccelStepper stepper1(AccelStepper::FULL4WIRE, M1_P1, M1_P3, M1_P2, M1_P4);
 AccelStepper stepper2(AccelStepper::FULL4WIRE, M2_P1, M2_P3, M2_P2, M2_P4);
 
-// *** Motor IDs for reporting ***
+// ID-ji motorjev za poročanje
 const int MOTOR_IDS[2] = {1, 2}; // Global IDs for these motors
 
 // --- Nastavitve motorjev ---
-// Note: Speed and Acceleration are still in STEPS/SEC and STEPS/SEC^2
+// Opomba: Hitrost in pospešek sta še vedno v KORAKIH/SEK in KORAKIH/SEK^2
 const float MAX_SPEED_NORMAL = 390.0;  // Steps per second
 const float ACCEL_NORMAL = 1000.0;     // Steps per second^2
 
-// *** NEW: Conversion Factors for Linear Motors ***
+// Faktorji pretvorbe za linearne motorje
 const float STEPS_PER_MOVEMENT = 10000.0;
 const float CM_PER_MOVEMENT = 17.5;
 const float STEPS_PER_CM = STEPS_PER_MOVEMENT / CM_PER_MOVEMENT; // Steps per cm (~571.43)
@@ -43,9 +43,9 @@ const float CM_PER_STEP = CM_PER_MOVEMENT / STEPS_PER_MOVEMENT; // Cm per step (
 // --- MQTT ---
 const char* mqttServer = "192.168.1.32";
 const int mqttPort = 1883;
-const char* mqttClientId = "esp32-crane-main-12"; // *** MUST BE UNIQUE ***
-const char* commandTopic = "assemblyline/crane/command";       // Listen for commands here
-const char* motorStateTopic = "assemblyline/crane/motor_state"; // Publish individual component states here
+const char* mqttClientId = "esp32-crane-main-12"; // MORA BITI UNIKATEN
+const char* commandTopic = "assemblyline/crane/command";       // Tukaj poslušajte ukaze
+const char* motorStateTopic = "assemblyline/crane/motor_state"; // Tukaj objavite stanja posameznih komponent
 
 // --- Globalni objekti ---
 WiFiClient espClient;
@@ -53,37 +53,37 @@ PubSubClient mqttClient(espClient);
 unsigned long lastStateReportTime = 0;
 const long stateReportInterval = 250; // Interval poročanja (ms)
 
-// *** Magnet State Variable ***
-bool magnetState = false; // Initially OFF
+// Spremenljivka stanja magneta
+bool magnetState = false; // Sprva IZKLOPLJENO
 
 // --- Prototipi funkcij ---
 void setupWifi();
 void reconnectMqtt();
 void mqttCallback(char* topic, byte* payload, unsigned int length);
-void publishComponentStates(); // Publish state for M1, M2 (in CM), and Magnet individually
-void setMagnet(bool state); // Function to control magnet
-long cmToSteps(float cm); // Helper function
-float stepsToCm(long steps);   // Helper function
+void publishComponentStates(); // Objavite stanje za M1, M2 (v CM) in magnet posamezno
+void setMagnet(bool state); // Funkcija za nadzor magneta
+long cmToSteps(float cm); // Pomožna funkcija
+float stepsToCm(long steps);   // Pomožna funkcija
 
 void setup() {
-    Serial.begin(115200); // For debugging THIS ESP
+    Serial.begin(115200); // Za odpravljanje napak TEGA ESP-ja
     Serial.println("ESP_Main (M1, M2, Magnet) Booting (Units: CM / Magnet State)...");
 
     // --- Konfiguriraj LOKALNE motorje ---
-    // AccelStepper always works in steps internally
+    // AccelStepper vedno deluje v korakih interno
     stepper1.setMaxSpeed(MAX_SPEED_NORMAL);
     stepper1.setAcceleration(ACCEL_NORMAL);
-    stepper1.setCurrentPosition(0); // Start at 0 steps (represents 0 cm)
+    stepper1.setCurrentPosition(0); // Začnite pri 0 korakih (predstavlja 0 cm)
     Serial.println("Stepper 1 (M1) Configured.");
 
     stepper2.setMaxSpeed(MAX_SPEED_NORMAL);
     stepper2.setAcceleration(ACCEL_NORMAL);
-    stepper2.setCurrentPosition(0); // Start at 0 steps (represents 0 cm)
+    stepper2.setCurrentPosition(0); // Začnite pri 0 korakih (predstavlja 0 cm)
     Serial.println("Stepper 2 (M2) Configured.");
 
-    // --- Configure Magnet Pin ---
+    // --- Konfiguriraj pin magneta ---
     pinMode(MAGNET_PIN, OUTPUT);
-    setMagnet(false); // Start with magnet OFF
+    setMagnet(false); // Začnite z magnetom IZKLOPLJENO
     Serial.println("Electromagnet Configured (Pin 0). Initial state: OFF");
 
     setupWifi();
@@ -97,33 +97,33 @@ void loop() {
     if (!mqttClient.connected()) {
         reconnectMqtt();
     }
-    mqttClient.loop(); // Process MQTT messages
+    mqttClient.loop(); // Obdelajte MQTT sporočila
 
-    // Run local steppers (internal step processing)
+    // Zaženite lokalne koračne motorje (notranja obdelava korakov)
     stepper1.run();
     stepper2.run();
 
-    // Periodically publish status via MQTT
+    // Periodično objavljajte stanje preko MQTT
     unsigned long now = millis();
     if (now - lastStateReportTime > stateReportInterval && mqttClient.connected()) {
-        publishComponentStates(); // Publish individual states (M1/M2 in CM)
+        publishComponentStates(); // Objavite posamezna stanja (M1/M2 v CM)
         lastStateReportTime = now;
     }
 }
 
-// --- Helper function to convert centimeters to steps ---
+// --- Pomožna funkcija za pretvorbo centimetrov v korake ---
 long cmToSteps(float cm) {
     return round(cm * STEPS_PER_CM);
 }
 
-// --- Helper function to convert steps to centimeters ---
+// --- Pomožna funkcija za pretvorbo korakov v centimetre ---
 float stepsToCm(long steps) {
     return (float)steps * CM_PER_STEP;
 }
 
-// *** Function to set magnet state and update variable ***
+// Funkcija za nastavitev stanja magneta in posodobitev spremenljivke
 void setMagnet(bool state) {
-    digitalWrite(MAGNET_PIN, state ? HIGH : LOW); // HIGH = ON, LOW = OFF (Adjust if your relay logic is inverted)
+    digitalWrite(MAGNET_PIN, state ? HIGH : LOW); // HIGH = VKLOPLJENO, LOW = IZKLOPLJENO (Prilagodite, če je vaša relejna logika obrnjena)
     magnetState = state;
     Serial.print("Magnet set to: "); Serial.println(magnetState ? "ON" : "OFF");
 }
@@ -131,17 +131,16 @@ void setMagnet(bool state) {
 void mqttCallback(char* topic, byte* payload, unsigned int length) {
     payload[length] = '\0';
     String message = String((char*)payload);
-    // message.toUpperCase(); // Keep case sensitivity for commands like "SET MAGNET"
     Serial.print("MQTT Received ["); Serial.print(topic); Serial.print("]: "); Serial.println(message);
 
     if (String(topic) == commandTopic) {
-        StaticJsonDocument<256> doc; // Increased size for JSON parsing
+        StaticJsonDocument<256> doc; // Povečana velikost za razčlenjevanje JSON
         DeserializationError error = deserializeJson(doc, payload, length);
 
         if (error) {
             Serial.print(F("deserializeJson() failed: "));
             Serial.println(error.f_str());
-            // Fallback to old string parsing for non-JSON commands
+            // Nadomestna možnost za staro razčlenjevanje nizov za ukaze, ki niso JSON
             if (message.startsWith("STOP ")) {
                 int motorIndex = -1;
                 String indexStr = message.substring(5);
@@ -159,36 +158,36 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
                         stepper2.runToPosition(); // Ensure smooth deceleration
                         publishComponentStates(); // Publish immediate update
                     } else {
-                        Serial.println("Ignoring STOP command for unknown/remote motor index.");
+                        Serial.println("Ignoriram ukaz STOP za neznan/oddaljen indeks motorja.");
                     }
                 } else { Serial.println("Invalid STOP format (missing motor index)."); }
             } else if (message.startsWith("SET MAGNET ")) {
                 String stateStr = message.substring(11);
                 stateStr.trim();
                 if (stateStr == "1") {
-                    setMagnet(true); // Turn magnet ON
+                    setMagnet(true); // Vklopite magnet
                     publishComponentStates(); // Publish immediate update
                 } else if (stateStr == "0") {
-                    setMagnet(false); // Turn magnet OFF
+                    setMagnet(false); // Izklopite magnet
                     publishComponentStates(); // Publish immediate update
                 } else {
-                    Serial.println("Invalid SET MAGNET format (use 1 for ON, 0 for OFF).");
+                    Serial.println("Neveljavna oblika SET MAGNET (uporabite 1 za VKLOP, 0 za IZKLOP).");
                 }
             } else if (message == "GETSTATUS" || message == "GETPOS") {
                 Serial.println("GETSTATUS/GETPOS received, publishing current component states (positions in CM).");
                 publishComponentStates();
             } else {
-                 Serial.println("Unknown command format received.");
+                 Serial.println("Prejeta neznana oblika ukaza.");
             }
         } else {
-            // JSON parsing successful
+            // Uspešno razčlenjevanje JSON
             const char* command = doc["command"];
             if (command && String(command) == "move_all") {
                 JsonArray motors = doc["motors"].as<JsonArray>();
                 if (motors) {
                     for (JsonObject motor : motors) {
                         int motorId = motor["id"];
-                        float pos = motor["pos"]; // This will be in cm for M1 and M2
+                        float pos = motor["pos"]; // To bo v cm za M1 in M2
 
                         if (motorId == MOTOR_IDS[0]) { // Motor 1
                             long targetPosSteps = cmToSteps(pos);
@@ -211,55 +210,52 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
                         }
                     }
                 }
-            } else if (command && String(command) == "set_magnet") { // New JSON command for magnet
+            } else if (command && String(command) == "set_magnet") { // Nov JSON ukaz za magnet
                 bool state = doc["state"];
                 setMagnet(state);
                 publishComponentStates();
             } else {
-                Serial.println("Unknown JSON command received.");
+                Serial.println("Prejet neznan JSON ukaz.");
             }
         }
     }
 }
 
-// *** UPDATED: Publishes the state of M1, M2 (in CM), and Magnet individually on motorStateTopic ***
+// Objavlja stanje M1, M2 (v CM) in magneta posamezno na motorStateTopic
 void publishComponentStates() {
     if (!mqttClient.connected()) return;
 
-    char jsonBuffer[128]; // Buffer for JSON payload
+    char jsonBuffer[128]; // Medpomnilnik za JSON podatke
 
-    // --- Publish state for Motor 1 ---
+    // --- Objavite stanje za motor 1 ---
     StaticJsonDocument<100> doc1;
     long currentSteps1 = stepper1.currentPosition();
-    float currentCm1 = stepsToCm(currentSteps1); // Convert steps to CM
-    doc1["motor"] = MOTOR_IDS[0]; // Motor ID = 1
-    doc1["pos"] = currentCm1;      // Publish position in CM
+    float currentCm1 = stepsToCm(currentSteps1); // Pretvori korake v CM
+    doc1["motor"] = MOTOR_IDS[0]; // ID motorja = 1
+    doc1["pos"] = currentCm1;      // Objavite pozicijo v CM
     doc1["state"] = (stepper1.distanceToGo() == 0) ? "IDLE" : "MOVING";
     serializeJson(doc1, jsonBuffer);
     mqttClient.publish(motorStateTopic, jsonBuffer);
-    // Serial.print("Published M1 State (CM): "); Serial.println(jsonBuffer); // Debug
 
-    // --- Publish state for Motor 2 ---
+    // --- Objavite stanje za motor 2 ---
     StaticJsonDocument<100> doc2;
     long currentSteps2 = stepper2.currentPosition();
-    float currentCm2 = stepsToCm(currentSteps2); // Convert steps to CM
-    doc2["motor"] = MOTOR_IDS[1]; // Motor ID = 2
-    doc2["pos"] = currentCm2;      // Publish position in CM
+    float currentCm2 = stepsToCm(currentSteps2); // Pretvori korake v CM
+    doc2["motor"] = MOTOR_IDS[1]; // ID motorja = 2
+    doc2["pos"] = currentCm2;      // Objavite pozicijo v CM
     doc2["state"] = (stepper2.distanceToGo() == 0) ? "IDLE" : "MOVING";
     serializeJson(doc2, jsonBuffer);
     mqttClient.publish(motorStateTopic, jsonBuffer);
-    // Serial.print("Published M2 State (CM): "); Serial.println(jsonBuffer); // Debug
 
-    // --- Publish state for Magnet ---
+    // --- Objavite stanje za magnet ---
     StaticJsonDocument<100> docM;
-    docM["component"] = "magnet"; // Use "component" key for non-motor parts
-    docM["state"] = magnetState ? 1 : 0; // 1 for ON, 0 for OFF
+    docM["component"] = "magnet"; // Uporabite ključ "component" za dele, ki niso motorji
+    docM["state"] = magnetState ? 1 : 0; // 1 za VKLOP, 0 za IZKLOP
     serializeJson(docM, jsonBuffer);
-    mqttClient.publish(motorStateTopic, jsonBuffer); // Publish to the same topic
-    // Serial.print("Published Magnet State: "); Serial.println(jsonBuffer); // Debug
+    mqttClient.publish(motorStateTopic, jsonBuffer); // Objavite na isto temo
 }
 
-// --- Standard WiFi and MQTT Functions (Unchanged) ---
+// --- Standardne WiFi in MQTT funkcije (nespremenjeno) ---
 void setupWifi() {
      delay(10);
      Serial.println("Connecting to WiFi...");
@@ -272,7 +268,6 @@ void setupWifi() {
          connection_attempts++;
          if (connection_attempts > 40) {
              Serial.println("\nWiFi Connection Failed!");
-             // Consider adding a restart or error state here
              return;
           }
      }
@@ -288,11 +283,11 @@ void reconnectMqtt() {
         Serial.print(")...");
         if (mqttClient.connect(mqttClientId)) {
             Serial.println("connected");
-            // Subscribe to the command topic
+            // Naročite se na temo ukazov
             if (mqttClient.subscribe(commandTopic)) {
                  Serial.print("Subscribed to: ");
                  Serial.println(commandTopic);
-                 // Publish initial states upon connection (positions in CM)
+                 // Objavite začetna stanja ob povezavi (pozicije v CM)
                  publishComponentStates();
             } else {
                 Serial.println("MQTT Subscription failed! Retrying in 5s...");
@@ -302,7 +297,7 @@ void reconnectMqtt() {
             Serial.print("failed, rc=");
             Serial.print(mqttClient.state());
             Serial.println(" try again in 5 seconds");
-            delay(5000); // Wait 5 seconds before retrying
+            delay(5000); // Počakajte 5 sekund pred ponovnim poskusom
         }
     }
 }

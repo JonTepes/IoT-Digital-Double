@@ -50,17 +50,17 @@ directionalLight.position.set(20, 30, 25);
 scene.add(directionalLight);
 
 // --- Pomočnik za mrežo in definicija merila ---
-const gridUnitSizeCm = 5; // Each grid square represents 5cm x 5cm
+const gridUnitSizeCm = 5; // Vsak kvadrat mreže predstavlja 5cm x 5cm
 const threeUnitsPerGridUnit = 1;
-const unitsPerCm = threeUnitsPerGridUnit / gridUnitSizeCm; // Calculate Three.js units per centimeter
-const gridDivisions = 10; // Make it a 10x10 grid
+const unitsPerCm = threeUnitsPerGridUnit / gridUnitSizeCm; // Izračunaj Three.js enote na centimeter
+const gridDivisions = 10; // Naredi 10x10 mrežo
 const gridSize = gridDivisions * threeUnitsPerGridUnit;
 
 const gridHelper = new THREE.GridHelper(gridSize, gridDivisions, 0x888888, 0xcccccc);
 gridHelper.position.y = -0.01;
 scene.add(gridHelper);
 
-// --- Kontrole kamere (OrbitControls) --- <<< Mora biti definirano *pred* DragControls, če si delita DOM element
+// --- Kontrole kamere (OrbitControls) ---
 const controls = new OrbitControls(camera, renderer.domElement);
 controls.enableDamping = true;
 controls.dampingFactor = 0.05;
@@ -95,8 +95,8 @@ function worldToGrid(worldX, worldZ) {
 
 // --- Nastavitev tovarne ---
 // Instanciraj FactoryManager
-const factoryManager = new FactoryManager(scene, gridToWorld, factoryLayout, unitsPerCm); // Removed mqttBrokerUrl
-
+const factoryManager = new FactoryManager(scene, gridToWorld, factoryLayout, unitsPerCm);
+ 
 // Inicializiraj tovarno (naloži modele, poveže se z MQTT)
 // Uporabi asinhrono IIFE (Immediately Invoked Function Expression) za obravnavo asinhrone inicializacije
 let draggableObjects = []; // Polje za shranjevanje modelov, ki jih je mogoče vleči
@@ -106,18 +106,16 @@ let clickOffsetFromRoot_world = new THREE.Vector3(); // Svetovni odmik od izvora
 let conveyorCount = 0; // Števec za unikatna imena tekočih trakov
 let dragControlsInstanceId = 0; // Števec za instance DragControls za odpravljanje napak
 let craneCount = 0;    // Števec za unikatna imena dvigal
-
-// Global Socket.IO client instance
+ 
 const socket = io();
-
+ 
 // Počakaj, da se DOM v celoti naloži, preden se izvede glavna logika
 document.addEventListener('DOMContentLoaded', () => {
-    // Odstranjeno: poslušalec pointermove za ročno vlečenje
-
+ 
     (async () => {
         try {
-            // Initialize manager (connects MQTT, etc., but doesn't load models)
-            // Pass the socket instance to the factoryManager
+            // Inicializiraj upravitelja (poveže MQTT itd., vendar ne naloži modelov)
+            // Posreduj instanco vtičnice upravitelju tovarne
             await factoryManager.initialize(socket);
 
             // Setup drag controls (will initially have an empty array)
@@ -129,26 +127,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
             // Listen for MQTT messages from the server
             socket.on('mqtt_message', (data) => {
-                // console.log(`Received MQTT message from server via Socket.IO: Topic: ${data.topic}, Message: ${data.message}`);
                 factoryManager.handleMqttMessage(data.topic, data.message);
             });
-
-            // Listen for UI status updates from the server
+ 
+            // Poslušaj posodobitve statusa UI s strežnika
             socket.on('ui_status_update', (data) => {
                 const automationStatusElement = document.getElementById('automation-status');
                 if (automationStatusElement) {
                     automationStatusElement.innerHTML = data.payload;
                 }
             });
-
-            if (canvas) { // Check canvas again just in case
+ 
+            if (canvas) {
                 animate();
-                console.log("Animation loop started after factory initialization.");
             } else {
-                console.error("Cannot start animation loop, canvas not found.");
             }
         } catch (error) {
-            console.error("Failed to initialize the factory:", error);
         }
     })();
 });
@@ -158,7 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function getRootMachineModelFromIntersection(intersectedObject) {
     let current = intersectedObject;
     let depth = 0; // Za preprečevanje potencialnih neskončnih zank v kompleksnih/pokvarjenih hierarhijah
-    while (current && depth < 10) { // Max search depth of 10
+    while (current && depth < 10) { // Največja globina iskanja 10
         // Preveri, ali je 'current' eden od objektov neposredno v draggableObjects
         // Primerjaj po UUID za zanesljivost, saj imena morda niso unikatna za pod-mreže.
         const isDraggableRoot = draggableObjects.find(obj => obj.uuid === current.uuid);
@@ -171,7 +165,6 @@ function getRootMachineModelFromIntersection(intersectedObject) {
         }
 
         if (!current.parent || current.parent === scene) { // Ustavi, če ni starša ali je starš scena
-            console.log(`[getRootMachineModelFromIntersection]   No more valid parents for ${current.name}. Stopping search.`);
             break;
         }
         current = current.parent;

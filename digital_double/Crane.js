@@ -30,10 +30,10 @@ export class Crane extends BaseMachine {
             this.magnet = this.model.getObjectByName('Magnet'); // Predvideva, da se magnet imenuje 'Magnet'
 
             // --- Preverjanje napak ---
-            if (!this.motor0) console.warn(`Crane ${this.name}: Could not find motor part M0`);
-            if (!this.motor1) console.warn(`Crane ${this.name}: Could not find motor part M1`);
-            if (!this.motor2) console.warn(`Crane ${this.name}: Could not find motor part M2`);
-            if (!this.magnet) console.warn(`Crane ${this.name}: Could not find magnet part 'Magnet'`);
+            if (!this.motor0) console.warn(`Žerjav ${this.name}: Ni bilo mogoče najti dela motorja M0`);
+            if (!this.motor1) console.warn(`Žerjav ${this.name}: Ni bilo mogoče najti dela motorja M1`);
+            if (!this.motor2) console.warn(`Žerjav ${this.name}: Ni bilo mogoče najti dela motorja M2`);
+            if (!this.magnet) console.warn(`Žerjav ${this.name}: Ni bilo mogoče najti dela magneta 'Magnet'`);
 
             // --- Shrani začetne transformacije ---
             if (this.motor0) this.initialRotationM0 = this.motor0.rotation.y;

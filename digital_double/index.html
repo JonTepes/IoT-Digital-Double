@@ -51,31 +51,31 @@
         .machine-control-panel {
             display: flex;
             flex-direction: column;
-            gap: 5px; /* Reduced gap for more compact display */
+            gap: 5px; /* Zmanjšan razmik za bolj kompakten prikaz */
         }
         .machine-control-panel h4 {
             margin-top: 0;
             margin-bottom: 5px;
             color: #007bff;
         }
-        .machine-control-panel div { /* For motor sliders and sensor displays */
+        .machine-control-panel div { /* Za drsnike motorjev in prikaze senzorjev */
             display: flex;
-            align-items: center; /* Align items to their vertical center */
-            gap: 5px; /* Reduced gap for more compact display */
+            align-items: center; /* Poravnajte elemente na njihovo navpično sredino */
+            gap: 5px; /* Zmanjšan razmik za bolj kompakten prikaz */
         }
         .slider-value-display {
-            display: inline-block; /* Ensure width is respected */
-            width: 60px; /* Increased width for values to prevent shifting */
-            flex-shrink: 0; /* Prevent shrinking */
-            text-align: left; /* Align values to the left */
-            white-space: nowrap; /* Prevent "cm" from wrapping to a new line */
+            display: inline-block; /* Zagotovite, da je širina upoštevana */
+            width: 60px; /* Povečana širina za vrednosti za preprečitev premikanja */
+            flex-shrink: 0; /* Preprečite krčenje */
+            text-align: left; /* Poravnajte vrednosti na levo */
+            white-space: nowrap; /* Preprečite, da se "cm" prelomi v novo vrstico */
         }
         .machine-control-panel label {
-            display: inline-block; /* Ensure width is respected */
-            width: 100px; /* Fixed width for labels to prevent shifting */
-            flex-shrink: 0; /* Prevent shrinking */
+            display: inline-block; /* Zagotovite, da je širina upoštevana */
+            width: 100px; /* Fiksna širina za oznake za preprečitev premikanja */
+            flex-shrink: 0; /* Preprečite krčenje */
             text-align: left;
-            margin-right: 0px; /* Ensure no extra margin */
+            margin-right: 0px; /* Zagotovite, da ni dodatnega roba */
         }
         .machine-control-panel input[type="range"] {
             flex-grow: 1;
@@ -188,7 +188,7 @@
         </div>
     </div>
 
-    <!-- Plošča za kontrole strojev - Premaknjena znotraj threejs-container -->
+    <!-- Plošča za kontrole strojev -->
     <div id="machine-controls">
         <h3>Kontrole stroja</h3>
         <div id="controls-content">
@@ -205,13 +205,13 @@
             <span class="conveyor-position-display slider-value-display">0.0 cm</span>
             <button class="conveyor-move-btn">Premakni trak</button>
 
-            <!-- Feeder Servo Control -->
+            <!-- Nadzor podajalnega servomotorja -->
             <div style="margin-top: 10px; border-top: 1px solid #eee; padding-top: 5px;">
                 <h4>Podajalnik paketov:</h4>
                 <button class="feeder-feed-btn">Podaj paket</button>
             </div>
 
-            <!-- Color Sensor Display (initially hidden) -->
+            <!-- Prikaz barvnega senzorja (sprva skrito) -->
             <div class="color-sensor-display" style="display: none; margin-top: 5px; border-top: 1px solid #eee; padding-top: 5px;">
                 <h4>Barvni senzor:</h4>
                 <div>

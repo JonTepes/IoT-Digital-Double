@@ -10,16 +10,15 @@ const FactoryAutomation = require('./FactoryAutomation'); // Import FactoryAutom
 
 const app = express();
 const httpServer = createServer(app);
-const io = new Server(httpServer, { /* options */ });
+const io = new Server(httpServer, {});
 
 const port = config.port;
 
-// Serve static files from the digital_double directory
+// Strežite statične datoteke iz imenika digital_double
 app.use(express.static(path.join(__dirname, 'digital_double')));
 
-// MJPG stream proxy
+// MJPG pretočni proxy
 app.get('/camera_stream', async (req, res) => {
-  // TODO: Change to http://iotlinija.ddns.net:8081/?action=stream if needed
   const streamUrl = config.cameraStreamUrl;
   try {
     const response = await fetch(streamUrl);
@@ -47,17 +46,17 @@ const mqttClient = mqtt.connect(config.mqttBrokerUrl);
 
 mqttClient.on('connect', () => {
   console.log('Connected to MQTT broker');
-  // FactoryAutomation will handle its own subscriptions
+  // FactoryAutomation bo upravljal lastne naročnine
 });
 
-// Instantiate FactoryAutomation after mqttClient and io are available
+// Ustvarite instanco FactoryAutomation po razpoložljivosti mqttClient in io
 let factoryAutomation;
 
 mqttClient.on('message', (topic, message) => {
-  // Emit all MQTT messages to connected Socket.IO clients for digital twin updates
+  // Oddajte vsa MQTT sporočila povezanim Socket.IO odjemalcem za posodobitve digitalnega dvojčka
   io.emit('mqtt_message', { topic: topic, message: message.toString() });
 
-  // Forward relevant MQTT messages to FactoryAutomation for automation logic
+  // Posredujte relevantna MQTT sporočila FactoryAutomation za avtomatizacijsko logiko
   if (factoryAutomation) {
     factoryAutomation.handleMqttMessage(topic, message.toString());
   }
@@ -69,14 +68,14 @@ io.on("connection", (socket) => {
     console.log("user disconnected");
   });
 
-  // Re-add the publish_mqtt listener for manual controls
+  // Ponovno dodajte poslušalca publish_mqtt za ročne kontrole
   socket.on('publish_mqtt', (data) => {
     const { topic, message } = data;
     console.log(`Received publish request from client for topic ${topic}: ${message}`);
     mqttClient.publish(topic, message);
   });
 
-  // Handle client requests to start/stop automation programs
+  // Obravnavajte zahteve odjemalcev za zagon/ustavitev avtomatizacijskih programov
   socket.on('start_program', (data) => {
     console.log(`Client requested to start program: ${data.programName}`);
     if (factoryAutomation) {
@@ -91,7 +90,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Handle client requests to switch automation programs
+  // Obravnavajte zahteve odjemalcev za preklop avtomatizacijskih programov
   socket.on('switch_program', (data) => {
     console.log(`Client requested to switch program to: ${data.programName}`);
     if (factoryAutomation) {
@@ -99,7 +98,7 @@ io.on("connection", (socket) => {
     }
   });
 
-  // Allow clients to subscribe/unsubscribe to MQTT topics directly if needed for other features
+  // Dovolite odjemalcem, da se neposredno naročijo/odjavijo na MQTT teme, če je potrebno za druge funkcije
   socket.on('subscribe_mqtt', (topic) => {
     console.log(`Client requested subscription to topic: ${topic}`);
     mqttClient.subscribe(topic, (err) => {
@@ -125,7 +124,7 @@ io.on("connection", (socket) => {
 
 httpServer.listen(port, () => {
   console.log(`Server listening on port ${port}`);
-  // Initialize FactoryAutomation after server starts and MQTT client is connected
+  // Inicializirajte FactoryAutomation po zagonu strežnika in povezavi MQTT odjemalca
   factoryAutomation = new FactoryAutomation(mqttClient, io);
   factoryAutomation.initialize();
 });

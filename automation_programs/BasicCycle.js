@@ -1,28 +1,27 @@
-const OBJECT_PRESENT_THRESHOLD = 150; // Object is PRESENT if color_c > this value
+const OBJECT_PRESENT_THRESHOLD = 150; // Objekt je PRISOTEN, če je color_c > te vrednosti
 
 class BasicCycle {
     constructor(factoryAutomationInstance) {
-        this.fa = factoryAutomationInstance; // Reference to the FactoryAutomation instance
+        this.fa = factoryAutomationInstance; // Referenca na instanco FactoryAutomation
     }
 
     handleMqttMessage(topic, message) {
-        // The gatekeepers are handled in FactoryAutomation.js before calling this method.
-        // This method only contains the state machine logic for the Basic Cycle.
+        // Vratarji so obravnavani v FactoryAutomation.js pred klicem te metode.
+        // Ta metoda vsebuje samo logiko stroja stanj za osnovni cikel.
 
         let command_msg = null;
         let payload;
         try {
             payload = JSON.parse(message);
         } catch (e) {
-            payload = message; // Handle non-JSON messages (like "STOP 0")
+            payload = message; // Obravnavajte sporočila, ki niso JSON (npr. "STOP 0")
         }
 
-        // Display current state on the node for easy debugging
         console.log(`RUNNING | State: ${this.fa.automationState}`);
         this.fa.updateUiStatus();
 
         switch (this.fa.automationState) {
-            // --- Feeder Sequence ---
+            // --- Zaporedje podajalnika ---
             case 'FEEDER_ACTIVATING':
                 console.warn("Activating feeder to move block onto conveyor.");
                 this.fa.automationState = 'WAITING_FOR_FEEDER_COMPLETE';
@@ -30,17 +29,14 @@ class BasicCycle {
                 break;
 
             case 'WAITING_FOR_FEEDER_COMPLETE':
-                // The feeder action is quick and doesn't have a separate state topic.
-                // We assume it's complete after the command is sent and a short delay.
-                // Transition back to IDLE to check the conveyor sensor for the new block.
                 console.warn("Feeder moved block. Transitioning to IDLE to check conveyor sensor.");
                 this.fa.automationState = 'IDLE';
-                // No command, just state transition
+                // Brez ukaza, samo prehod stanja
                 break;
 
-            // --- Feeder Sequence ---
+            // --- Zaporedje podajalnika ---
 
-            // --- Conveyor 1 Sequence ---
+            // --- Zaporedje transporterja 1 ---
             case 'IDLE':
                 if (topic === 'assemblyline/conveyor/state' && payload.sensor_ok) {
                     if (payload.color_c <= OBJECT_PRESENT_THRESHOLD) {
@@ -71,17 +67,17 @@ class BasicCycle {
 
             case 'CONVEYOR1_MOVING_TO_PICKUP':
                 if (topic === 'assemblyline/conveyor/state' && payload.status === 'IDLE') {
-                    // Assuming conveyor always stops at the right position as per user's instruction
+                    // Predpostavljamo, da se transporter vedno ustavi na pravi poziciji po navodilih uporabnika
                     console.warn(`Conveyor at pickup position. Starting crane sequence.`);
                     this.fa.automationState = 'CRANE_MOVING_TO_PICKUP_XY';
-                    this.fa.craneMotorStatus = { m0: false, m1: false, m2: true }; // m2 is true because it's not moving yet
+                    this.fa.craneMotorStatus = { m0: false, m1: false, m2: true }; // m2 je true, ker se še ne premika
                     const cmd_m0 = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 0, pos: -40.0 }] }) };
                     const cmd_m1 = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 1, pos: 7.7 }] }) };
-                    command_msg = [cmd_m0, cmd_m1]; // Send multiple commands
+                    command_msg = [cmd_m0, cmd_m1]; // Pošljite več ukazov
                 }
                 break;
 
-            // --- Crane First Pickup/Dropoff ---
+            // --- Prvi prevzem/odlaganje žerjava ---
             case 'CRANE_MOVING_TO_PICKUP_XY':
                 if (topic === 'assemblyline/crane/motor_state') {
                     if (payload.motor === 0 || payload.motor === 1) {
@@ -147,38 +143,38 @@ class BasicCycle {
                 }
                 break;
 
-            // --- Final Step & Loop ---
+            // --- Končni korak in zanka ---
             case 'CONVEYOR2_MOVING':
                 if (topic === 'assemblyline/conveyor2/state' && payload.status === 'IDLE') {
                     console.warn("Cycle complete. Resetting to FEEDER_ACTIVATING.");
-                    this.fa.automationState = 'FEEDER_ACTIVATING'; // Loop back to feeder activation
-                    // No command to send, just triggering UI update and delay
+                    this.fa.automationState = 'FEEDER_ACTIVATING'; // Zanka nazaj na aktivacijo podajalnika
+                    // Ni ukaza za pošiljanje, samo sprožitev posodobitve UI in zamude
                     command_msg = { payload: "No command, just triggering UI update and delay" };
                 }
                 break;
         }
 
-        // --- ACTION ---
+        // --- AKCIJA ---
         if (command_msg) {
-            // A decision was made. Lock the listener and send the command(s).
-            // Set the lock BEFORE sending commands
+            // Odločitev je bila sprejeta. Zaklenite poslušalca in pošljite ukaz(e).
+            // Nastavite zaklep PRED pošiljanjem ukazov
             this.fa.commandSent = true;
-            this.fa.updateUiStatus(); // Update UI to show "LOCKED" state if applicable
+            this.fa.updateUiStatus(); // Posodobite UI za prikaz stanja "ZAKLENJENO", če je primerno
 
             if (Array.isArray(command_msg)) {
                 command_msg.forEach(cmd => {
                     this.fa.publishMqttCommand(cmd.topic, cmd.payload);
                 });
-            } else if (command_msg.topic) { // Check if it's a single command object
+            } else if (command_msg.topic) { // Preverite, ali gre za en sam objekt ukaza
                 this.fa.publishMqttCommand(command_msg.topic, command_msg.payload);
             } else {
-                // This is the "No command, just triggering UI update and delay" case
-                // No actual MQTT command is sent, so we can unlock immediately or after a short UI delay.
-                // Node-RED had a delay here, so let's keep a small delay for consistency.
+                // To je primer "Brez ukaza, samo sprožitev posodobitve UI in zamude"
+                // Dejanski MQTT ukaz ni poslan, zato lahko odklenemo takoj ali po kratki zamudi UI.
+                // Node-RED je imel tukaj zamudo, zato ohranimo majhno zamudo za doslednost.
                 console.log("No MQTT command to send, but state transition occurred. Unlocking listener after delay.");
             }
-            // Start a single timer to unlock the listener after all commands are initiated
-            setTimeout(() => this.fa.unlockListener(), 1000); // 1000ms (1 second) delay, as requested
+            // Zaženite en sam časovnik za odklepanje poslušalca po inicializaciji vseh ukazov
+            setTimeout(() => this.fa.unlockListener(), 1000); // 1000ms (1 sekunda) zamude, kot je bilo zahtevano
         }
     }
 }

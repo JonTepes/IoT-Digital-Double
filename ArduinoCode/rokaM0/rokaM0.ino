@@ -27,15 +27,14 @@ const float DEGREES_PER_STEP = DEGREES_PER_REVOLUTION / STEPS_PER_REVOLUTION;
 // --- MQTT ---
 const char* mqttServer = "192.168.1.32";
 const int mqttPort = 1883;
-const char* mqttClientId = "esp32-crane-m0-consolidated"; // Consolidated Output
+const char* mqttClientId = "esp32-crane-m0-consolidated"; // Konsolidiran izhod
 const char* commandTopic = "assemblyline/crane/command";
-const char* motorStateTopic = "assemblyline/crane/motor_state"; // Single output topic
+const char* motorStateTopic = "assemblyline/crane/motor_state"; // Enotna izhodna tema
 
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
 unsigned long lastStateReportTime = 0;
 const long stateReportInterval = 250;
-// No lastPotReportTime or potReportInterval needed as it's part of motorStateTopic
 
 const int ADC_AT_ZERO_DEGREES = 1322;
 const float ANGLE_AT_ZERO_DEGREES_POINT = -9.0f;
@@ -59,14 +58,12 @@ const float ANGLE_TOLERANCE = 2.5f;
 const float KP_GAIN = 5.0f; // Proportional gain for speed control (degrees/sec per degree of error)
 const float MAX_MOTOR_SPEED_DEGREES_PER_SEC = 390.0f; // Max speed in degrees/sec
 const float MIN_MOTOR_SPEED_DEGREES_PER_SEC = 10.0f; // Min speed in degrees/sec (to avoid stalling)
-const float MOTOR_DIRECTION_FACTOR = 1.0f; // Adjust if motor direction needs to be inverted
-
-// No explicit states needed, just a flag for active control
+const float MOTOR_DIRECTION_FACTOR = 1.0f; // Prilagodite, če je treba smer motorja obrniti
 
 void setupWifi();
 void reconnectMqtt();
 void mqttCallback(char* topic, byte* payload, unsigned int length);
-void publishMotorStates(); // This will now include potentiometer data
+void publishMotorStates(); // To bo zdaj vključevalo podatke potenciometra
 void updatePotentiometerAngles();
 long degreesToSteps(float degrees);
 float stepsToDegrees(long steps);
@@ -96,22 +93,22 @@ void loop() {
         float absError = abs(error);
 
         if (absError > ANGLE_TOLERANCE) {
-            // Proportional control: speed is proportional to error
+            // Proporcionalni nadzor: hitrost je sorazmerna z napako
             float desiredSpeedDegreesPerSec = error * KP_GAIN;
 
-            // Constrain speed within min/max limits
+            // Omejite hitrost znotraj min/max omejitev
             if (abs(desiredSpeedDegreesPerSec) > MAX_MOTOR_SPEED_DEGREES_PER_SEC) {
                 desiredSpeedDegreesPerSec = copysign(MAX_MOTOR_SPEED_DEGREES_PER_SEC, desiredSpeedDegreesPerSec);
             } else if (abs(desiredSpeedDegreesPerSec) < MIN_MOTOR_SPEED_DEGREES_PER_SEC) {
-                // Only apply min speed if there's a significant error to avoid micro-movements
-                if (absError > (ANGLE_TOLERANCE / 2.0f)) { // A small hysteresis
+                // Uporabite minimalno hitrost le, če obstaja pomembna napaka, da se izognete mikro-premikom
+                if (absError > (ANGLE_TOLERANCE / 2.0f)) { // Majhna histereza
                     desiredSpeedDegreesPerSec = copysign(MIN_MOTOR_SPEED_DEGREES_PER_SEC, desiredSpeedDegreesPerSec);
                 } else {
-                    desiredSpeedDegreesPerSec = 0; // Stop if error is very small
+                    desiredSpeedDegreesPerSec = 0; // Ustavite, če je napaka zelo majhna
                 }
             }
 
-            // Convert desired speed from degrees/sec to steps/sec
+            // Pretvori želeno hitrost iz stopinj/sek v korake/sek
             float desiredSpeedStepsPerSec = desiredSpeedDegreesPerSec * STEPS_PER_DEGREE * MOTOR_DIRECTION_FACTOR;
             stepper0.setSpeed(desiredSpeedStepsPerSec);
         } else {
@@ -119,7 +116,7 @@ void loop() {
             stepper0.setSpeed(0);
         }
     } else {
-        // Control loop not active, ensure motor is stopped
+        // Krmilna zanka ni aktivna, zagotovite, da je motor ustavljen
         stepper0.setSpeed(0);
     }
 
@@ -130,7 +127,6 @@ void loop() {
         publishMotorStates(); // This now includes pot data
         lastStateReportTime = now;
     }
-    // No separate pot publishing block
 }
 
 void updatePotentiometerAngles() {
@@ -177,24 +173,24 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
                 Serial.println("Unknown command format received.");
             }
         } else {
-            // JSON parsing successful
+            // Uspešno razčlenjevanje JSON
             const char* command = doc["command"];
             if (command && String(command) == "move_all") {
                 JsonArray motors = doc["motors"].as<JsonArray>();
                 if (motors) {
                     for (JsonObject motor : motors) {
                         int motorId = motor["id"];
-                        float pos = motor["pos"]; // This will be in degrees for M0
+                        float pos = motor["pos"]; // To bo v stopinjah za M0
 
                         if (motorId == MOTOR_ID) { // Motor 0
                             g_targetPotAngleDegrees = pos;
-                            g_controlLoopActive = true; // Activate control loop
+                            g_controlLoopActive = true; // Aktivirajte krmilno zanko
                             publishMotorStates();
                         }
                     }
                 }
             } else {
-                Serial.println("Unknown JSON command received.");
+                Serial.println("Prejet neznan JSON ukaz.");
             }
         }
     }
@@ -203,8 +199,8 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 void publishMotorStates() {
     if (!mqttClient.connected()) return;
 
-    // Increased JSON document size to accommodate potentiometer data
-    StaticJsonDocument<250> doc0; // Was 200, increased a bit
+    // Povečana velikost JSON dokumenta za podatke potenciometra
+    StaticJsonDocument<250> doc0;
     char jsonBuffer[250];
 
 
@@ -213,7 +209,7 @@ void publishMotorStates() {
     doc0["motor"] = MOTOR_ID;
     doc0["stepper_pos_deg"] = round(internalStepperDegrees * 10.0)/10.0;
 
-    // Report state based on control loop activity and error
+    // Poročajte o stanju na podlagi aktivnosti krmilne zanke in napake
     if (g_controlLoopActive) {
         float error = g_targetPotAngleDegrees - g_controlPotAngleDegrees;
         float absError = abs(error);
@@ -228,17 +224,13 @@ void publishMotorStates() {
 
     doc0["target_pot_angle"] = round(g_targetPotAngleDegrees * 10.0)/10.0;
 
-    // Add potentiometer data to this payload
-    doc0["pos"] = g_reportedPotAngleDegrees; // The quantized angle for display
+    // Dodajte podatke potenciometra k tej vsebini
+    doc0["pos"] = g_reportedPotAngleDegrees; // Kvantiziran kot za prikaz
     doc0["pot_raw"] = g_lastRawAdcValue;
-    // Optionally, publish the control angle for debugging if needed:
-    // doc0["pot_control_angle_deg"] = round(g_controlPotAngleDegrees * 100.0) / 100.0;
 
     serializeJson(doc0, jsonBuffer);
     mqttClient.publish(motorStateTopic, jsonBuffer);
 }
-
-// No publishPotentiometerAngle() function needed anymore
 
 void setupWifi() {
      delay(10);
@@ -258,8 +250,8 @@ void reconnectMqtt() {
             if (mqttClient.subscribe(commandTopic)) {
                  updatePotentiometerAngles();
                  g_targetPotAngleDegrees = g_controlPotAngleDegrees;
-                 g_controlLoopActive = false; // Ensure control loop is off initially
-                 publishMotorStates(); // Publish initial consolidated state
+                 g_controlLoopActive = false; // Zagotovite, da je krmilna zanka sprva izklopljena
+                 publishMotorStates(); // Objavite začetno konsolidirano stanje
              } else { delay(500); }
          } else { delay(500); }
      }

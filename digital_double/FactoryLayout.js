@@ -7,7 +7,7 @@ export const factoryLayout = [
         gridPos: { x: 5, y: 10 }, // Položaj na mreži
         rotationY: 0, // Rotacija v radianih (0 = privzeto)
         topics: { // Relevantne MQTT teme za tekoči trak (npr. hitrost, stanje delovanja)
-            // state: 'assemblyline/conveyor1/state', // Primer teme za stanje
+            // Primer teme za stanje
         }
     },
     {
@@ -17,8 +17,7 @@ export const factoryLayout = [
         gridPos: { x: 10, y: 12 },
         rotationY: Math.PI / 2, // Zavrten za 90 stopinj
         topics: {
-            // position: 'assemblyline/crane/position', // Primer teme za položaj žerjava
-            // Dodaj več tem (npr. prijemalo, rotacija)
+            // Primer teme za položaj žerjava
         }
     },
     {
@@ -32,5 +31,4 @@ export const factoryLayout = [
             highlight: "assemblyline/crane/motor_state" // Tema, ki nadzoruje osvetlitev/barvo obdelovanca
         }
     }
-    // Tukaj lahko dodaš več strojev ali obdelovancev
 ];

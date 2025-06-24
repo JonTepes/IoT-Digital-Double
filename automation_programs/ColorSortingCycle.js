@@ -1,32 +1,31 @@
-const OBJECT_PRESENT_THRESHOLD = 150; // Object is PRESENT if color_c > this value
-// Thresholds for color detection based on RGB values
-const BLUE_THRESHOLD_B_MIN = 40; // Minimum blue component for a blue block
-const BLUE_THRESHOLD_RG_MAX = 75; // Maximum red/green components for a blue block
-const YELLOW_THRESHOLD_RG_MIN = 50; // Minimum red/green components for a yellow block
-const YELLOW_THRESHOLD_B_MAX = 45; // Maximum blue component for a yellow block
+const OBJECT_PRESENT_THRESHOLD = 150; // Objekt je PRISOTEN, če je color_c > te vrednosti
+// Pragovi za zaznavanje barv na podlagi RGB vrednosti
+const BLUE_THRESHOLD_B_MIN = 40; // Minimalna modra komponenta za moder blok
+const BLUE_THRESHOLD_RG_MAX = 75; // Maksimalne rdeče/zelene komponente za moder blok
+const YELLOW_THRESHOLD_RG_MIN = 50; // Minimalne rdeče/zelene komponente za rumen blok
+const YELLOW_THRESHOLD_B_MAX = 45; // Maksimalna modra komponenta za rumen blok
 
 class ColorSortingCycle {
     constructor(factoryAutomationInstance) {
-        this.fa = factoryAutomationInstance; // Reference to the FactoryAutomation instance
-        this.blockColor = null; // To store the detected block color ('blue', 'yellow', 'unknown')
+        this.fa = factoryAutomationInstance; // Referenca na instanco FactoryAutomation
+        this.blockColor = null; // Za shranjevanje zaznane barve bloka ('modra', 'rumena', 'neznana')
     }
 
     handleMqttMessage(topic, message) {
-        // The gatekeepers are handled in FactoryAutomation.js before calling this method.
-        // This method only contains the state machine logic for the Basic Cycle.
+        // Vratarji so obravnavani v FactoryAutomation.js pred klicem te metode.
+        // Ta metoda vsebuje samo logiko stroja stanj za osnovni cikel.
 
         let command_msg = null;
         let payload;
         try {
             payload = JSON.parse(message);
         } catch (e) {
-            payload = message; // Handle non-JSON messages (like "STOP 0")
+            payload = message; // Obravnavajte sporočila, ki niso JSON (npr. "STOP 0")
         }
 
-        // Display current state on the node for easy debugging
         console.log(`RUNNING | State: ${this.fa.automationState}`);
         switch (this.fa.automationState) {
-            // --- Feeder Sequence ---
+            // --- Zaporedje podajalnika ---
             case 'FEEDER_ACTIVATING':
                 console.warn("Activating feeder to move block onto conveyor.");
                 this.fa.automationState = 'WAITING_FOR_FEEDER_COMPLETE';
@@ -34,17 +33,17 @@ class ColorSortingCycle {
                 break;
 
             case 'WAITING_FOR_FEEDER_COMPLETE':
-                // The feeder action is quick and doesn't have a separate state topic.
-                // We assume it's complete after the command is sent and a short delay.
-                // Transition back to IDLE to check the conveyor sensor for the new block.
+                // Dejanje podajalnika je hitro in nima ločene teme stanja.
+                // Predvidevamo, da je dokončano po poslanem ukazu in kratki zamudi.
+                // Prehod nazaj v IDLE za preverjanje senzorja transporterja za nov blok.
                 console.warn("Feeder moved block. Transitioning to IDLE to check conveyor sensor.");
                 this.fa.automationState = 'IDLE';
-                // No command, just state transition
+                // Brez ukaza, samo prehod stanja
                 break;
 
-            // --- Feeder Sequence ---
+            // --- Zaporedje podajalnika ---
 
-            // --- Conveyor 1 Sequence ---
+            // --- Zaporedje transporterja 1 ---
             case 'IDLE':
                 if (topic === 'assemblyline/conveyor/state' && payload.sensor_ok) {
                     if (payload.color_c <= OBJECT_PRESENT_THRESHOLD) {
@@ -58,10 +57,10 @@ class ColorSortingCycle {
                         this.fa.conveyor1PickupPos = targetPos;
                         this.fa.automationState = 'CONVEYOR1_MOVING_WITH_OBJECT';
                         command_msg = { topic: 'assemblyline/conveyor/command', payload: { command: "MOVE_ABS", value: targetPos } };
-                        // Request a state update after a delay to get stable color values while moving
+                        // Zahtevajte posodobitev stanja po zamudi, da dobite stabilne barvne vrednosti med premikanjem
                         setTimeout(() => {
                             this.fa.publishMqttCommand('assemblyline/conveyor/command', { command: "GET_STATE" });
-                        }, 500); // 500ms delay
+                        }, 500); // 500ms zamude
                     }
                 }
                 break;
@@ -74,16 +73,16 @@ class ColorSortingCycle {
                     this.fa.conveyor1PickupPos = targetPos;
                     this.fa.automationState = 'CONVEYOR1_MOVING_WITH_OBJECT';
                     command_msg = { topic: 'assemblyline/conveyor/command', payload: { command: "MOVE_ABS", value: targetPos } };
-                    // Request a state update after a delay to get stable color values while moving
+                    // Zahtevajte posodobitev stanja po zamudi, da dobite stabilne barvne vrednosti med premikanjem
                     setTimeout(() => {
                         this.fa.publishMqttCommand('assemblyline/conveyor/command', { command: "GET_STATE" });
-                    }, 500); // 500ms delay
+                    }, 500); // 500ms zamude
                 }
                 break;
 
             case 'CONVEYOR1_MOVING_WITH_OBJECT':
-                // This state is entered after a block is detected and the conveyor starts moving.
-                // We expect a GET_STATE response after 0.5s delay.
+                // To stanje se vnese po zaznavi bloka in začetku premikanja transporterja.
+                // Pričakujemo odgovor GET_STATE po 0.5s zamude.
                 if (topic === 'assemblyline/conveyor/state' && payload.status === 'MOVING' && payload.color_r !== undefined) {
                     console.warn(`Received color reading while moving (R:${payload.color_r}, G:${payload.color_g}, B:${payload.color_b}, C:${payload.color_c}).`);
                     this.fa.currentBlockR = payload.color_r;
@@ -101,24 +100,24 @@ class ColorSortingCycle {
                         this.blockColor = 'unknown';
                         console.warn(`Detected: Unknown block color (R:${payload.color_r}, G:${payload.color_g}, B:${payload.color_b}, C:${payload.color_c}).`);
                     }
-                    this.fa.automationState = 'CONVEYOR1_MOVING_TO_PICKUP'; // Transition to the next state
-                    this.fa.updateUiStatus(); // Update UI after color detection
+                    this.fa.automationState = 'CONVEYOR1_MOVING_TO_PICKUP'; // Prehod v naslednje stanje
+                    this.fa.updateUiStatus(); // Posodobite UI po zaznavi barve
                 }
                 break;
 
             case 'CONVEYOR1_MOVING_TO_PICKUP':
                 if (topic === 'assemblyline/conveyor/state' && payload.status === 'IDLE') {
-                    // Assuming conveyor always stops at the right position as per user's instruction
+                    // Predpostavljamo, da se transporter vedno ustavi na pravi poziciji po navodilih uporabnika
                     console.warn(`Conveyor at pickup position. Starting crane sequence.`);
                     this.fa.automationState = 'CRANE_MOVING_TO_PICKUP_XY';
-                    this.fa.craneMotorStatus = { m0: false, m1: false, m2: true }; // m2 is true because it's not moving yet
+                    this.fa.craneMotorStatus = { m0: false, m1: false, m2: true }; // m2 je true, ker se še ne premika
                     const cmd_m0 = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 0, pos: -40.0 }] }) };
                     const cmd_m1 = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 1, pos: 7.7 }] }) };
-                    command_msg = [cmd_m0, cmd_m1]; // Send multiple commands
+                    command_msg = [cmd_m0, cmd_m1]; // Pošljite več ukazov
                 }
                 break;
 
-            // --- Crane First Pickup/Dropoff ---
+            // --- Prvi prevzem/odlaganje žerjava ---
             case 'CRANE_MOVING_TO_PICKUP_XY':
                 if (topic === 'assemblyline/crane/motor_state') {
                     if (payload.motor === 0 || payload.motor === 1) {
@@ -198,44 +197,44 @@ class ColorSortingCycle {
                 }
                 break;
 
-            // --- Final Step & Loop ---
+            // --- Končni korak in zanka ---
             case 'CONVEYOR2_MOVING':
                 if (topic === 'assemblyline/conveyor2/state' && payload.status === 'IDLE') {
                     console.warn("Cycle complete. Resetting to FEEDER_ACTIVATING.");
-                    this.fa.automationState = 'FEEDER_ACTIVATING'; // Loop back to feeder activation
-                    this.blockColor = null; // Reset block color for the next cycle
+                    this.fa.automationState = 'FEEDER_ACTIVATING'; // Zanka nazaj na aktivacijo podajalnika
+                    this.blockColor = null; // Ponastavite barvo bloka za naslednji cikel
                     this.fa.currentBlockR = 'none';
                     this.fa.currentBlockG = 'none';
                     this.fa.currentBlockB = 'none';
                     this.fa.currentBlockC = 'none';
-                    this.fa.updateUiStatus(); // Update UI after resetting values
-                    // No command to send, just triggering UI update and delay
+                    this.fa.updateUiStatus(); // Posodobite UI po ponastavitvi vrednosti
+                    // Ni ukaza za pošiljanje, samo sprožitev posodobitve UI in zamude
                     command_msg = { payload: "No command, just triggering UI update and delay" };
                 }
                 break;
         }
 
-        // --- ACTION ---
+        // --- AKCIJA ---
         if (command_msg) {
-            // A decision was made. Lock the listener and send the command(s).
-            // Set the lock BEFORE sending commands
+            // Odločitev je bila sprejeta. Zaklenite poslušalca in pošljite ukaz(e).
+            // Nastavite zaklep PRED pošiljanjem ukazov
             this.fa.commandSent = true;
-            this.fa.updateUiStatus(); // Update UI to show "LOCKED" state if applicable
+            this.fa.updateUiStatus(); // Posodobite UI za prikaz stanja "ZAKLENJENO", če je primerno
 
             if (Array.isArray(command_msg)) {
                 command_msg.forEach(cmd => {
                     this.fa.publishMqttCommand(cmd.topic, cmd.payload);
                 });
-            } else if (command_msg.topic) { // Check if it's a single command object
+            } else if (command_msg.topic) { // Preverite, ali gre za en sam objekt ukaza
                 this.fa.publishMqttCommand(command_msg.topic, command_msg.payload);
             } else {
-                // This is the "No command, just triggering UI update and delay" case
-                // No actual MQTT command is sent, so we can unlock immediately or after a short UI delay.
-                // Node-RED had a delay here, so let's keep a small delay for consistency.
+                // To je primer "Brez ukaza, samo sprožitev posodobitve UI in zamude"
+                // Dejanski MQTT ukaz ni poslan, zato lahko odklenemo takoj ali po kratki zamudi UI.
+                // Node-RED je imel tukaj zamudo, zato ohranimo majhno zamudo za doslednost.
                 console.log("No MQTT command to send, but state transition occurred. Unlocking listener after delay.");
             }
-            // Start a single timer to unlock the listener after all commands are initiated
-            setTimeout(() => this.fa.unlockListener(), 1000); // 1000ms (1 second) delay, as requested
+            // Zaženite en sam časovnik za odklepanje poslušalca po inicializaciji vseh ukazov
+            setTimeout(() => this.fa.unlockListener(), 1000); // 1000ms (1 sekunda) zamude, kot je bilo zahtevano
         }
     }
 }

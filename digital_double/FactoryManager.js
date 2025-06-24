@@ -3,7 +3,7 @@ import { Crane } from './Crane.js';
 import { Workpiece } from './Workpiece.js';
 
 export class FactoryManager {
-    constructor(scene, gridToWorld, layout, unitsPerCm) { // Removed mqttBrokerUrl
+    constructor(scene, gridToWorld, layout, unitsPerCm) {
         this.scene = scene;
         this.gridToWorld = gridToWorld;
         this.layout = layout;
@@ -11,12 +11,11 @@ export class FactoryManager {
 
         this.machines = new Map(); // Shrani instance strojev { ime: instanca }
         this.topicMap = new Map(); // Mapira MQTT teme na instanco stroja, ki naj jih obravnava { tema: instanca }
-        // this.mqttClient is no longer needed here as communication is proxied via Socket.IO
     }
 
-    async initialize(socket) { // Accept socket instance
-        this.socket = socket; // Store socket instance
-        // No direct MQTT connection needed here anymore
+    async initialize(socket) { // Sprejmi instanco vtičnice
+        this.socket = socket; // Shrani instanco vtičnice
+        // Neposredna MQTT povezava tukaj ni več potrebna
     }
 
     // Metoda za dinamično dodajanje posameznega stroja v sceno
@@ -127,7 +126,7 @@ export class FactoryManager {
             }
         }
 
-        // Emit subscription requests to the server
+        // Pošlji zahteve za naročnino strežniku
         if (this.socket && this.socket.connected && topicsToSubscribe.length > 0) {
             topicsToSubscribe.forEach(topic => {
                 this.socket.emit('subscribe_mqtt', topic);
@@ -144,7 +143,7 @@ export class FactoryManager {
         this.topicMap.set(topic, instance); // Preslikaj temo na instanco
     }
 
-    // Handle incoming MQTT messages from the server via Socket.IO
+    // Obravnavaj dohodna MQTT sporočila s strežnika preko Socket.IO
     handleMqttMessage(topic, payloadString) {
         const machineInstance = this.topicMap.get(topic); // Poišči instanco, preslikano na to temo
         if (machineInstance && typeof machineInstance.handleMessage === 'function') {
@@ -155,13 +154,12 @@ export class FactoryManager {
                 console.error(`Spodletelo razčlenjevanje MQTT sporočila na temi ${topic}:`, e, `Vsebina: ${payloadString}`);
             }
         } else {
-            // console.warn(`Prejeto sporočilo na nepreslikani temi: ${topic}`); // Lahko je preveč hrupno
         }
     }
 
     // Ponastavi stanje upravitelja tovarne
     async reset() {
-        // Emit unsubscribe requests to the server for all current topics
+        // Pošlji zahteve za odjavo strežniku za vse trenutne teme
         if (this.socket && this.socket.connected) {
             Array.from(this.topicMap.keys()).forEach(topic => {
                 this.socket.emit('unsubscribe_mqtt', topic);

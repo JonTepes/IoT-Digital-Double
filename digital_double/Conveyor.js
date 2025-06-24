@@ -7,9 +7,9 @@ export class Conveyor extends BaseMachine {
         // Specifične lastnosti tekočega traku
         this.mixer = null; // Mešalnik animacij za model
         this.animationActions = []; // Seznam animacijskih akcij
-        this.colorData = { r: 0, g: 0, b: 0, c: 0, sensor_ok: false }; // Store latest color data
-        this.onColorDataUpdate = null; // Callback function for UI updates
-        this.previousPosition = undefined; // Store the previous position to determine direction
+        this.colorData = { r: 0, g: 0, b: 0, c: 0, sensor_ok: false }; // Shrani najnovejše barvne podatke
+        this.onColorDataUpdate = null; // Povratna funkcija za posodobitve UI
+        this.previousPosition = undefined; // Shrani prejšnji položaj za določitev smeri
     }
 
     async loadModel() {
@@ -42,14 +42,14 @@ export class Conveyor extends BaseMachine {
             if (message.hasOwnProperty('status')) {
                 if (this.animationActions.length > 0) {
                     if (message.status === "MOVING") {
-                        let direction = 0; // 0: no change, 1: positive, -1: negative
+                        let direction = 0; // 0: brez spremembe, 1: pozitivno, -1: negativno
                         if (message.hasOwnProperty('position')) {
                             const currentPosition = message.position;
                             if (this.previousPosition !== undefined) {
                                 if (currentPosition > this.previousPosition) {
-                                    direction = 1; // Moving in positive direction
+                                    direction = 1; // Premikanje v pozitivni smeri
                                 } else if (currentPosition < this.previousPosition) {
-                                    direction = -1; // Moving in negative direction
+                                    direction = -1; // Premikanje v negativni smeri
                                 }
                             }
                             this.previousPosition = currentPosition;
@@ -57,9 +57,9 @@ export class Conveyor extends BaseMachine {
 
                         this.animationActions.forEach(action => {
                             if (direction === -1) {
-                                action.timeScale = -1; // Play animation backward
+                                action.timeScale = -1; // Predvajaj animacijo nazaj
                             } else {
-                                action.timeScale = 1; // Play animation forward (default)
+                                action.timeScale = 1; // Predvajaj animacijo naprej (privzeto)
                             }
                             if (!action.isRunning()) {
                                 action.play();
@@ -75,16 +75,16 @@ export class Conveyor extends BaseMachine {
                 }
             }
 
-            // Handle color sensor data if present in the state message
+            // Obravnavajte podatke barvnega senzorja, če so prisotni v sporočilu o stanju
             if (message.hasOwnProperty('color_r') && message.hasOwnProperty('color_g') &&
                 message.hasOwnProperty('color_b') && message.hasOwnProperty('color_c')) {
                 this.colorData.r = message.color_r;
                 this.colorData.g = message.color_g;
                 this.colorData.b = message.color_b;
                 this.colorData.c = message.color_c;
-                this.colorData.sensor_ok = message.sensor_ok || false; // Default to false if not present
+                this.colorData.sensor_ok = message.sensor_ok || false; // Privzeto na false, če ni prisotno
 
-                // Trigger callback if registered
+                // Sprožite povratni klic, če je registriran
                 if (typeof this.onColorDataUpdate === 'function') {
                     this.onColorDataUpdate(this.colorData);
                 }
