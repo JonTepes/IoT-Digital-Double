@@ -80,7 +80,7 @@ io.on("connection", (socket) => {
   socket.on('start_program', (data) => {
     console.log(`Client requested to start program: ${data.programName}`);
     if (factoryAutomation) {
-      factoryAutomation.start();
+      factoryAutomation.start(data.programName);
     }
   });
 
