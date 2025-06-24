@@ -54,27 +54,15 @@ class ColorSortingCycle {
                     } else {
                         let currentPos = payload.position;
                         let targetPos = currentPos + 5.5;
-                        console.warn(`Object already present (c=${payload.color_c}, r=${payload.color_r}, g=${payload.color_g}, b=${payload.color_b}). Moving to pickup pos: ${targetPos}cm.`);
+                        console.warn(`Object already present (c=${payload.color_c}). Moving to pickup pos: ${targetPos}cm.`);
                         this.fa.conveyor1PickupPos = targetPos;
-                        this.fa.automationState = 'CONVEYOR1_MOVING_TO_PICKUP';
+                        this.fa.automationState = 'CONVEYOR1_MOVING_WITH_OBJECT';
                         command_msg = { topic: 'assemblyline/conveyor/command', payload: { command: "MOVE_ABS", value: targetPos } };
-                        // Determine block color based on RGB values
-                        this.fa.currentBlockR = payload.color_r;
-                        this.fa.currentBlockG = payload.color_g;
-                        this.fa.currentBlockB = payload.color_b;
-                        this.fa.currentBlockC = payload.color_c;
-                        if (payload.color_b > BLUE_THRESHOLD_B_MIN && payload.color_r < BLUE_THRESHOLD_RG_MAX && payload.color_g < BLUE_THRESHOLD_RG_MAX) {
-                            this.blockColor = 'blue';
-                            console.warn("Detected: Blue block.");
-                        } else if (payload.color_r > YELLOW_THRESHOLD_RG_MIN && payload.color_g > YELLOW_THRESHOLD_RG_MIN && payload.color_b < YELLOW_THRESHOLD_B_MAX) {
-                            this.blockColor = 'yellow';
-                            console.warn("Detected: Yellow block.");
-                        } else {
-                            this.blockColor = 'unknown';
-                            console.warn(`Detected: Unknown block color (R:${payload.color_r}, G:${payload.color_g}, B:${payload.color_b}, C:${payload.color_c}).`);
-                        }
+                        // Request a state update after a delay to get stable color values while moving
+                        setTimeout(() => {
+                            this.fa.publishMqttCommand('assemblyline/conveyor/command', { command: "GET_STATE" });
+                        }, 500); // 500ms delay
                     }
-                    this.fa.updateUiStatus(); // Update UI after color detection
                 }
                 break;
 
@@ -82,15 +70,27 @@ class ColorSortingCycle {
                 if (topic === 'assemblyline/conveyor/state' && payload.sensor_ok && payload.color_c > OBJECT_PRESENT_THRESHOLD) {
                     let currentPos = payload.position;
                     let targetPos = currentPos + 4.0;
-                    console.warn(`Object detected at ${currentPos}cm (c=${payload.color_c}, r=${payload.color_r}, g=${payload.color_g}, b=${payload.color_b}). Moving to calculated pickup position: ${targetPos}cm.`);
+                    console.warn(`Object detected at ${currentPos}cm (c=${payload.color_c}). Moving to calculated pickup position: ${targetPos}cm.`);
                     this.fa.conveyor1PickupPos = targetPos;
-                    this.fa.automationState = 'CONVEYOR1_MOVING_TO_PICKUP';
+                    this.fa.automationState = 'CONVEYOR1_MOVING_WITH_OBJECT';
                     command_msg = { topic: 'assemblyline/conveyor/command', payload: { command: "MOVE_ABS", value: targetPos } };
-                    // Determine block color based on RGB values
+                    // Request a state update after a delay to get stable color values while moving
+                    setTimeout(() => {
+                        this.fa.publishMqttCommand('assemblyline/conveyor/command', { command: "GET_STATE" });
+                    }, 500); // 500ms delay
+                }
+                break;
+
+            case 'CONVEYOR1_MOVING_WITH_OBJECT':
+                // This state is entered after a block is detected and the conveyor starts moving.
+                // We expect a GET_STATE response after 0.5s delay.
+                if (topic === 'assemblyline/conveyor/state' && payload.status === 'MOVING' && payload.color_r !== undefined) {
+                    console.warn(`Received color reading while moving (R:${payload.color_r}, G:${payload.color_g}, B:${payload.color_b}, C:${payload.color_c}).`);
                     this.fa.currentBlockR = payload.color_r;
                     this.fa.currentBlockG = payload.color_g;
                     this.fa.currentBlockB = payload.color_b;
                     this.fa.currentBlockC = payload.color_c;
+
                     if (payload.color_b > BLUE_THRESHOLD_B_MIN && payload.color_r < BLUE_THRESHOLD_RG_MAX && payload.color_g < BLUE_THRESHOLD_RG_MAX) {
                         this.blockColor = 'blue';
                         console.warn("Detected: Blue block.");
@@ -101,8 +101,9 @@ class ColorSortingCycle {
                         this.blockColor = 'unknown';
                         console.warn(`Detected: Unknown block color (R:${payload.color_r}, G:${payload.color_g}, B:${payload.color_b}, C:${payload.color_c}).`);
                     }
+                    this.fa.automationState = 'CONVEYOR1_MOVING_TO_PICKUP'; // Transition to the next state
+                    this.fa.updateUiStatus(); // Update UI after color detection
                 }
-                this.fa.updateUiStatus(); // Update UI after color detection
                 break;
 
             case 'CONVEYOR1_MOVING_TO_PICKUP':
