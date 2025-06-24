@@ -1,6 +1,6 @@
 const OBJECT_PRESENT_THRESHOLD = 150; // Object is PRESENT if color_c > this value
 // Thresholds for color detection based on RGB values
-const BLUE_THRESHOLD_B_MIN = 45; // Minimum blue component for a blue block
+const BLUE_THRESHOLD_B_MIN = 40; // Minimum blue component for a blue block
 const BLUE_THRESHOLD_RG_MAX = 75; // Maximum red/green components for a blue block
 const YELLOW_THRESHOLD_RG_MIN = 50; // Minimum red/green components for a yellow block
 const YELLOW_THRESHOLD_B_MAX = 45; // Maximum blue component for a yellow block
