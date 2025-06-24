@@ -1,10 +1,14 @@
 const OBJECT_PRESENT_THRESHOLD = 150; // Object is PRESENT if color_c > this value
-const BLUE_BLOCK_COLOR_THRESHOLD = 100; // Example threshold for blue color (adjust as needed)
+// Thresholds for color detection based on RGB values
+const BLUE_THRESHOLD_B_MIN = 30; // Minimum blue component for a blue block
+const BLUE_THRESHOLD_RG_MAX = 70; // Maximum red/green components for a blue block
+const YELLOW_THRESHOLD_RG_MIN = 50; // Minimum red/green components for a yellow block
+const YELLOW_THRESHOLD_B_MAX = 30; // Maximum blue component for a yellow block
 
 class ColorSortingCycle {
     constructor(factoryAutomationInstance) {
         this.fa = factoryAutomationInstance; // Reference to the FactoryAutomation instance
-        this.blockColor = null; // To store the detected block color
+        this.blockColor = null; // To store the detected block color ('blue', 'yellow', 'unknown')
     }
 
     handleMqttMessage(topic, message) {
@@ -52,11 +56,21 @@ class ColorSortingCycle {
                     } else {
                         let currentPos = payload.position;
                         let targetPos = currentPos + 5.5;
-                        console.warn(`Object already present (c=${payload.color_c}). Moving to pickup pos: ${targetPos}cm.`);
+                        console.warn(`Object already present (c=${payload.color_c}, r=${payload.r}, g=${payload.g}, b=${payload.b}). Moving to pickup pos: ${targetPos}cm.`);
                         this.fa.conveyor1PickupPos = targetPos;
                         this.fa.automationState = 'CONVEYOR1_MOVING_TO_PICKUP';
                         command_msg = { topic: 'assemblyline/conveyor/command', payload: { command: "MOVE_ABS", value: targetPos } };
-                        this.blockColor = payload.color_c; // Store color when object is detected
+                        // Determine block color based on RGB values
+                        if (payload.b > BLUE_THRESHOLD_B_MIN && payload.r < BLUE_THRESHOLD_RG_MAX && payload.g < BLUE_THRESHOLD_RG_MAX) {
+                            this.blockColor = 'blue';
+                            console.warn("Detected: Blue block.");
+                        } else if (payload.r > YELLOW_THRESHOLD_RG_MIN && payload.g > YELLOW_THRESHOLD_RG_MIN && payload.b < YELLOW_THRESHOLD_B_MAX) {
+                            this.blockColor = 'yellow';
+                            console.warn("Detected: Yellow block.");
+                        } else {
+                            this.blockColor = 'unknown';
+                            console.warn(`Detected: Unknown block color (R:${payload.r}, G:${payload.g}, B:${payload.b}, C:${payload.c}).`);
+                        }
                     }
                 }
                 break;
@@ -65,11 +79,21 @@ class ColorSortingCycle {
                 if (topic === 'assemblyline/conveyor/state' && payload.sensor_ok && payload.color_c > OBJECT_PRESENT_THRESHOLD) {
                     let currentPos = payload.position;
                     let targetPos = currentPos + 4.0;
-                    console.warn(`Object detected at ${currentPos}cm. Moving to calculated pickup position: ${targetPos}cm.`);
+                    console.warn(`Object detected at ${currentPos}cm (c=${payload.color_c}, r=${payload.r}, g=${payload.g}, b=${payload.b}). Moving to calculated pickup position: ${targetPos}cm.`);
                     this.fa.conveyor1PickupPos = targetPos;
                     this.fa.automationState = 'CONVEYOR1_MOVING_TO_PICKUP';
                     command_msg = { topic: 'assemblyline/conveyor/command', payload: { command: "MOVE_ABS", value: targetPos } };
-                    this.blockColor = payload.color_c; // Store color when object is detected
+                    // Determine block color based on RGB values
+                    if (payload.b > BLUE_THRESHOLD_B_MIN && payload.r < BLUE_THRESHOLD_RG_MAX && payload.g < BLUE_THRESHOLD_RG_MAX) {
+                        this.blockColor = 'blue';
+                        console.warn("Detected: Blue block.");
+                    } else if (payload.r > YELLOW_THRESHOLD_RG_MIN && payload.g > YELLOW_THRESHOLD_RG_MIN && payload.b < YELLOW_THRESHOLD_B_MAX) {
+                        this.blockColor = 'yellow';
+                        console.warn("Detected: Yellow block.");
+                    } else {
+                        this.blockColor = 'unknown';
+                        console.warn(`Detected: Unknown block color (R:${payload.r}, G:${payload.g}, B:${payload.b}, C:${payload.c}).`);
+                    }
                 }
                 break;
 
@@ -120,17 +144,23 @@ class ColorSortingCycle {
             case 'CRANE_RAISING_TO_SAFE_HEIGHT':
                 if (topic === 'assemblyline/crane/motor_state' && payload.motor === 2 && payload.state === 'IDLE') {
                     this.fa.craneMotorStatus = { m0: false, m1: false, m2: true };
-                    if (this.blockColor <= BLUE_BLOCK_COLOR_THRESHOLD) {
+                    if (this.blockColor === 'blue') {
                         console.warn("Blue block detected. Moving to blue block dropoff X/Y.");
                         this.fa.automationState = 'CRANE_MOVING_TO_DROPOFF_XY';
                         const cmd_m0_d = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 0, pos: 52.5 }] }) };
                         const cmd_m1_d = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 1, pos: 12.0 }] }) };
                         command_msg = [cmd_m0_d, cmd_m1_d];
-                    } else {
+                    } else if (this.blockColor === 'yellow') {
                         console.warn("Yellow block detected. Moving to yellow block dropoff X/Y.");
                         this.fa.automationState = 'CRANE_MOVING_TO_DROPOFF_XY';
                         const cmd_m0_d = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 0, pos: -90.0 }] }) };
                         const cmd_m1_d = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 1, pos: 10.0 }] }) };
+                        command_msg = [cmd_m0_d, cmd_m1_d];
+                    } else {
+                        console.warn(`Unknown block color (${this.blockColor}). Defaulting to blue block dropoff.`);
+                        this.fa.automationState = 'CRANE_MOVING_TO_DROPOFF_XY';
+                        const cmd_m0_d = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 0, pos: 52.5 }] }) };
+                        const cmd_m1_d = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 1, pos: 12.0 }] }) };
                         command_msg = [cmd_m0_d, cmd_m1_d];
                     }
                 }
