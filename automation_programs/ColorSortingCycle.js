@@ -25,8 +25,6 @@ class ColorSortingCycle {
 
         // Display current state on the node for easy debugging
         console.log(`RUNNING | State: ${this.fa.automationState}`);
-        this.fa.updateUiStatus();
-
         switch (this.fa.automationState) {
             // --- Feeder Sequence ---
             case 'FEEDER_ACTIVATING':
@@ -56,26 +54,27 @@ class ColorSortingCycle {
                     } else {
                         let currentPos = payload.position;
                         let targetPos = currentPos + 5.5;
-                        console.warn(`Object already present (c=${payload.color_c}, r=${payload.r}, g=${payload.g}, b=${payload.b}). Moving to pickup pos: ${targetPos}cm.`);
+                        console.warn(`Object already present (c=${payload.color_c}, r=${payload.color_r}, g=${payload.color_g}, b=${payload.color_b}). Moving to pickup pos: ${targetPos}cm.`);
                         this.fa.conveyor1PickupPos = targetPos;
                         this.fa.automationState = 'CONVEYOR1_MOVING_TO_PICKUP';
                         command_msg = { topic: 'assemblyline/conveyor/command', payload: { command: "MOVE_ABS", value: targetPos } };
                         // Determine block color based on RGB values
-                        this.fa.currentBlockR = payload.r;
-                        this.fa.currentBlockG = payload.g;
-                        this.fa.currentBlockB = payload.b;
-                        this.fa.currentBlockC = payload.c;
-                        if (payload.b > BLUE_THRESHOLD_B_MIN && payload.r < BLUE_THRESHOLD_RG_MAX && payload.g < BLUE_THRESHOLD_RG_MAX) {
+                        this.fa.currentBlockR = payload.color_r;
+                        this.fa.currentBlockG = payload.color_g;
+                        this.fa.currentBlockB = payload.color_b;
+                        this.fa.currentBlockC = payload.color_c;
+                        if (payload.color_b > BLUE_THRESHOLD_B_MIN && payload.color_r < BLUE_THRESHOLD_RG_MAX && payload.color_g < BLUE_THRESHOLD_RG_MAX) {
                             this.blockColor = 'blue';
                             console.warn("Detected: Blue block.");
-                        } else if (payload.r > YELLOW_THRESHOLD_RG_MIN && payload.g > YELLOW_THRESHOLD_RG_MIN && payload.b < YELLOW_THRESHOLD_B_MAX) {
+                        } else if (payload.color_r > YELLOW_THRESHOLD_RG_MIN && payload.color_g > YELLOW_THRESHOLD_RG_MIN && payload.color_b < YELLOW_THRESHOLD_B_MAX) {
                             this.blockColor = 'yellow';
                             console.warn("Detected: Yellow block.");
                         } else {
                             this.blockColor = 'unknown';
-                            console.warn(`Detected: Unknown block color (R:${payload.r}, G:${payload.g}, B:${payload.b}, C:${payload.c}).`);
+                            console.warn(`Detected: Unknown block color (R:${payload.color_r}, G:${payload.color_g}, B:${payload.color_b}, C:${payload.color_c}).`);
                         }
                     }
+                    this.fa.updateUiStatus(); // Update UI after color detection
                 }
                 break;
 
@@ -83,26 +82,27 @@ class ColorSortingCycle {
                 if (topic === 'assemblyline/conveyor/state' && payload.sensor_ok && payload.color_c > OBJECT_PRESENT_THRESHOLD) {
                     let currentPos = payload.position;
                     let targetPos = currentPos + 4.0;
-                    console.warn(`Object detected at ${currentPos}cm (c=${payload.color_c}, r=${payload.r}, g=${payload.g}, b=${payload.b}). Moving to calculated pickup position: ${targetPos}cm.`);
+                    console.warn(`Object detected at ${currentPos}cm (c=${payload.color_c}, r=${payload.color_r}, g=${payload.color_g}, b=${payload.color_b}). Moving to calculated pickup position: ${targetPos}cm.`);
                     this.fa.conveyor1PickupPos = targetPos;
                     this.fa.automationState = 'CONVEYOR1_MOVING_TO_PICKUP';
                     command_msg = { topic: 'assemblyline/conveyor/command', payload: { command: "MOVE_ABS", value: targetPos } };
                     // Determine block color based on RGB values
-                    this.fa.currentBlockR = payload.r;
-                    this.fa.currentBlockG = payload.g;
-                    this.fa.currentBlockB = payload.b;
-                    this.fa.currentBlockC = payload.c;
-                    if (payload.b > BLUE_THRESHOLD_B_MIN && payload.r < BLUE_THRESHOLD_RG_MAX && payload.g < BLUE_THRESHOLD_RG_MAX) {
+                    this.fa.currentBlockR = payload.color_r;
+                    this.fa.currentBlockG = payload.color_g;
+                    this.fa.currentBlockB = payload.color_b;
+                    this.fa.currentBlockC = payload.color_c;
+                    if (payload.color_b > BLUE_THRESHOLD_B_MIN && payload.color_r < BLUE_THRESHOLD_RG_MAX && payload.color_g < BLUE_THRESHOLD_RG_MAX) {
                         this.blockColor = 'blue';
                         console.warn("Detected: Blue block.");
-                    } else if (payload.r > YELLOW_THRESHOLD_RG_MIN && payload.g > YELLOW_THRESHOLD_RG_MIN && payload.b < YELLOW_THRESHOLD_B_MAX) {
+                    } else if (payload.color_r > YELLOW_THRESHOLD_RG_MIN && payload.color_g > YELLOW_THRESHOLD_RG_MIN && payload.color_b < YELLOW_THRESHOLD_B_MAX) {
                         this.blockColor = 'yellow';
                         console.warn("Detected: Yellow block.");
                     } else {
                         this.blockColor = 'unknown';
-                        console.warn(`Detected: Unknown block color (R:${payload.r}, G:${payload.g}, B:${payload.b}, C:${payload.c}).`);
+                        console.warn(`Detected: Unknown block color (R:${payload.color_r}, G:${payload.color_g}, B:${payload.color_b}, C:${payload.color_c}).`);
                     }
                 }
+                this.fa.updateUiStatus(); // Update UI after color detection
                 break;
 
             case 'CONVEYOR1_MOVING_TO_PICKUP':
@@ -207,6 +207,7 @@ class ColorSortingCycle {
                     this.fa.currentBlockG = 'none';
                     this.fa.currentBlockB = 'none';
                     this.fa.currentBlockC = 'none';
+                    this.fa.updateUiStatus(); // Update UI after resetting values
                     // No command to send, just triggering UI update and delay
                     command_msg = { payload: "No command, just triggering UI update and delay" };
                 }

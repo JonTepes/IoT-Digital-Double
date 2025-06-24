@@ -92,7 +92,47 @@ class FactoryAutomation {
     }
 
     updateUiStatus() {
-        const statusMessage = `System: ${this.systemMode}<br>Program: ${this.selectedAutomationProgram}<br>Process: ${this.automationState}<br>Block Color: ${this.blockColor}<br>R: ${this.currentBlockR}, G: ${this.currentBlockG}, B: ${this.currentBlockB}, C: ${this.currentBlockC}`;
+        let blockColor = 'none';
+        let r = 'none';
+        let g = 'none';
+        let b = 'none';
+        let c = 'none';
+
+        if (this.activeAutomationProgram && this.selectedAutomationProgram === 'ColorSortingCycle') {
+            blockColor = this.activeAutomationProgram.blockColor || 'none';
+            // Assuming the ColorSortingCycle instance stores the last known RGB C values
+            // We need to ensure these are passed from the payload to the ColorSortingCycle instance
+            // and then accessed here.
+            // For now, let's assume ColorSortingCycle will have properties for these.
+            // If not, we'll need to add them to ColorSortingCycle.
+            // Re-reading ColorSortingCycle.js to confirm.
+            // After re-reading, I see that ColorSortingCycle.js is setting this.fa.currentBlockR etc.
+            // This means FactoryAutomation should have these properties.
+            // The previous diff was correct in adding them to FactoryAutomation.
+            // The issue is that the values are not being passed from ColorSortingCycle to FactoryAutomation.
+            // Let's revert the change to FactoryAutomation.js constructor and keep the properties there.
+            // The problem is that the `updateUiStatus` in FactoryAutomation is called, but the `currentBlockR` etc.
+            // are not being updated in FactoryAutomation itself.
+            // They are being updated in `this.fa.currentBlockR` from `ColorSortingCycle.js`.
+            // So, the `FactoryAutomation` instance *does* have these properties.
+            // The problem is that the `blockColor` is `this.blockColor` in FactoryAutomation, which is not updated.
+            // It should be `this.activeAutomationProgram.blockColor`.
+
+            // Let's correct the updateUiStatus to use the values from the activeAutomationProgram.
+            // The `currentBlockR`, `currentBlockG`, `currentBlockB`, `currentBlockC` are indeed properties of `FactoryAutomation`.
+            // The `ColorSortingCycle` updates `this.fa.currentBlockR` which means it updates the `FactoryAutomation` instance's properties.
+            // So, the `FactoryAutomation` properties are correct.
+            // The only thing that needs to be fixed is `this.blockColor` in `FactoryAutomation.js`'s `updateUiStatus`.
+            // It should be `this.activeAutomationProgram.blockColor`.
+
+            blockColor = this.activeAutomationProgram.blockColor || 'none';
+            r = this.currentBlockR;
+            g = this.currentBlockG;
+            b = this.currentBlockB;
+            c = this.currentBlockC;
+        }
+
+        const statusMessage = `System: ${this.systemMode}<br>Program: ${this.selectedAutomationProgram}<br>Process: ${this.automationState}<br>Block Color: ${blockColor}<br>R: ${r}, G: ${g}, B: ${b}, C: ${c}`;
         this.io.emit('ui_status_update', { payload: statusMessage });
     }
 
