@@ -61,9 +61,9 @@ class FactoryAutomation {
         this.updateUiStatus();
 
         // Send STOP commands for ALL devices
-        this.publishMqttCommand("assemblyline/crane/command", "STOP 0");
-        this.publishMqttCommand("assemblyline/crane/command", "STOP 1");
-        this.publishMqttCommand("assemblyline/crane/command", "STOP 2");
+        this.publishMqttCommand("assemblyline/crane/command", { command: "STOP", motor: 0 });
+        this.publishMqttCommand("assemblyline/crane/command", { command: "STOP", motor: 1 });
+        this.publishMqttCommand("assemblyline/crane/command", { command: "STOP", motor: 2 });
         this.publishMqttCommand("assemblyline/conveyor/command", { command: "STOP" });
         this.publishMqttCommand("assemblyline/conveyor2/command", { command: "STOP" });
     }
