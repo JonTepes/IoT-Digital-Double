@@ -36,7 +36,7 @@ class FactoryAutomation {
         console.log("Factory Automation Initialized.");
     }
 
-    start() {
+    start(programName) {
         if (this.systemMode === 'RUNNING') {
             console.log("System already RUNNING.");
             return;
