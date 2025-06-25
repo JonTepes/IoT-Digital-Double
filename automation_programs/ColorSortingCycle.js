@@ -68,7 +68,7 @@ class ColorSortingCycle {
             case 'WAITING_FOR_OBJECT':
                 if (topic === 'assemblyline/conveyor/state' && payload.sensor_ok && payload.color_c > OBJECT_PRESENT_THRESHOLD) {
                     let currentPos = payload.position;
-                    let targetPos = currentPos + 4.0;
+                    let targetPos = currentPos + 5.0;
                     console.warn(`Object detected at ${currentPos}cm (c=${payload.color_c}). Moving to calculated pickup position: ${targetPos}cm.`);
                     this.fa.conveyor1PickupPos = targetPos;
                     this.fa.automationState = 'CONVEYOR1_MOVING_WITH_OBJECT';
@@ -111,7 +111,7 @@ class ColorSortingCycle {
                     console.warn(`Conveyor at pickup position. Starting crane sequence.`);
                     this.fa.automationState = 'CRANE_MOVING_TO_PICKUP_XY';
                     this.fa.craneMotorStatus = { m0: false, m1: false, m2: true }; // m2 je true, ker se še ne premika
-                    const cmd_m0 = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 0, pos: -40.0 }] }) };
+                    const cmd_m0 = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 0, pos: -35.0 }] }) };
                     const cmd_m1 = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 1, pos: 7.7 }] }) };
                     command_msg = [cmd_m0, cmd_m1]; // Pošljite več ukazov
                 }
