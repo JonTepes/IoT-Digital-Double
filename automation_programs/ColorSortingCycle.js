@@ -9,6 +9,9 @@ class ColorSortingCycle {
     constructor(factoryAutomationInstance) {
         this.fa = factoryAutomationInstance; // Referenca na instanco FactoryAutomation
         this.blockColor = null; // Za shranjevanje zaznane barve bloka ('modra', 'rumena', 'neznana')
+
+        // Start conveyor 2 continuously when the cycle is initialized
+        this.fa.publishMqttCommand('assemblyline/conveyor2/command', { command: "MOVE_CONTINUOUS", value: -100 });
     }
 
     handleMqttMessage(topic, message) {

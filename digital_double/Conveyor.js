@@ -108,6 +108,16 @@ export class Conveyor extends BaseMachine {
                         console.log(`Tekoči trak ${this.name} je simuliral ustavitev.`);
                     }, 2000); // Ustavi po 2 sekundah
                 }
+            } else if (message.command === 'MOVE_CONTINUOUS') {
+                console.log(`Tekoči trak ${this.name} je prejel ukaz za neprekinjeno premikanje.`);
+                if (this.animationActions.length > 0) {
+                    this.animationActions.forEach(action => {
+                        action.timeScale = message.value < 0 ? -1 : 1; // Nastavi smer glede na vrednost
+                        if (!action.isRunning()) {
+                            action.play(); // Zaženi animacijo, če še ne deluje
+                        }
+                    });
+                }
             }
         }
     }
