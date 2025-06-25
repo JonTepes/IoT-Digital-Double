@@ -106,9 +106,8 @@ class ColorSortingCycle {
                 break;
 
             case 'CONVEYOR1_MOVING_TO_PICKUP':
-                if (topic === 'assemblyline/conveyor/state' && payload.status === 'IDLE') {
-                    // Predpostavljamo, da se transporter vedno ustavi na pravi poziciji po navodilih uporabnika
-                    console.warn(`Conveyor at pickup position. Starting crane sequence.`);
+                if (topic === 'assemblyline/conveyor/state') {
+                    console.warn(`Conveyor state received. Starting crane sequence to pickup XY.`);
                     this.fa.automationState = 'CRANE_MOVING_TO_PICKUP_XY';
                     this.fa.craneMotorStatus = { m0: false, m1: false, m2: true }; // m2 je true, ker se še ne premika
                     const cmd_m0 = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 0, pos: -30.0 }] }) };
@@ -191,27 +190,19 @@ class ColorSortingCycle {
 
             case 'DEACTIVATING_MAGNET_FIRST_TIME':
                 if (topic === 'assemblyline/crane/motor_state' && payload.component === 'magnet' && payload.state === 0) {
-                    console.warn(`Magnet OFF. Moving conveyor 2.`);
-                    this.fa.automationState = 'CONVEYOR2_MOVING';
-                    command_msg = { topic: 'assemblyline/conveyor2/command', payload: { command: "MOVE_REL", value: -9.0 } };
-                }
-                break;
-
-            // --- Končni korak in zanka ---
-            case 'CONVEYOR2_MOVING':
-                if (topic === 'assemblyline/conveyor2/state' && payload.status === 'IDLE') {
-                    console.warn("Cycle complete. Resetting to FEEDER_ACTIVATING.");
-                    this.fa.automationState = 'FEEDER_ACTIVATING'; // Zanka nazaj na aktivacijo podajalnika
-                    this.blockColor = null; // Ponastavite barvo bloka za naslednji cikel
+                    console.warn(`Magnet OFF. Starting conveyor 2 continuous movement and resetting cycle.`);
+                    this.fa.automationState = 'FEEDER_ACTIVATING'; // Reset to start new cycle immediately
+                    this.blockColor = null; // Reset block color for next cycle
                     this.fa.currentBlockR = 'none';
                     this.fa.currentBlockG = 'none';
                     this.fa.currentBlockB = 'none';
                     this.fa.currentBlockC = 'none';
-                    this.fa.updateUiStatus(); // Posodobite UI po ponastavitvi vrednosti
-                    // Ni ukaza za pošiljanje, samo sprožitev posodobitve UI in zamude
-                    command_msg = { payload: "No command, just triggering UI update and delay" };
+                    this.fa.updateUiStatus(); // Update UI after resetting values
+                    command_msg = { topic: 'assemblyline/conveyor2/command', payload: { command: "MOVE_CONTINUOUS", value: -100 } }; // Continuous negative movement
                 }
                 break;
+
+            // --- Končni korak in zanka ---
         }
 
         // --- AKCIJA ---
