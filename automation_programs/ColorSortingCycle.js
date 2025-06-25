@@ -52,7 +52,7 @@ class ColorSortingCycle {
                         command_msg = { topic: 'assemblyline/conveyor/command', payload: { command: "MOVE_REL", value: 1000 } };
                     } else {
                         let currentPos = payload.position;
-                        let targetPos = currentPos + 5.5;
+                        let targetPos = currentPos + 4.5;
                         console.warn(`Object already present (c=${payload.color_c}). Moving to pickup pos: ${targetPos}cm.`);
                         this.fa.conveyor1PickupPos = targetPos;
                         this.fa.automationState = 'CONVEYOR1_MOVING_WITH_OBJECT';
@@ -68,7 +68,7 @@ class ColorSortingCycle {
             case 'WAITING_FOR_OBJECT':
                 if (topic === 'assemblyline/conveyor/state' && payload.sensor_ok && payload.color_c > OBJECT_PRESENT_THRESHOLD) {
                     let currentPos = payload.position;
-                    let targetPos = currentPos + 5.0;
+                    let targetPos = currentPos + 4.5;
                     console.warn(`Object detected at ${currentPos}cm (c=${payload.color_c}). Moving to calculated pickup position: ${targetPos}cm.`);
                     this.fa.conveyor1PickupPos = targetPos;
                     this.fa.automationState = 'CONVEYOR1_MOVING_WITH_OBJECT';
