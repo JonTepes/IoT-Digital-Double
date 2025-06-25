@@ -9,9 +9,6 @@ class ColorSortingCycle {
     constructor(factoryAutomationInstance) {
         this.fa = factoryAutomationInstance; // Referenca na instanco FactoryAutomation
         this.blockColor = null; // Za shranjevanje zaznane barve bloka ('modra', 'rumena', 'neznana')
-
-        // Start conveyor 2 continuously when the cycle is initialized
-        this.fa.publishMqttCommand('assemblyline/conveyor2/command', { command: "MOVE_CONTINUOUS", value: -100 });
     }
 
     handleMqttMessage(topic, message) {
@@ -32,7 +29,10 @@ class ColorSortingCycle {
             case 'FEEDER_ACTIVATING':
                 console.warn("Activating feeder to move block onto conveyor.");
                 this.fa.automationState = 'WAITING_FOR_FEEDER_COMPLETE';
-                command_msg = { topic: 'assemblyline/conveyor/command', payload: { command: "FEED_BLOCK" } };
+                command_msg = [
+                    { topic: 'assemblyline/conveyor/command', payload: { command: "FEED_BLOCK" } },
+                    { topic: 'assemblyline/conveyor2/command', payload: { command: "MOVE_ABS", value: -99999 } } // Move conveyor2 continuously in negative direction
+                ];
                 break;
 
             case 'WAITING_FOR_FEEDER_COMPLETE':
@@ -193,7 +193,7 @@ class ColorSortingCycle {
 
             case 'DEACTIVATING_MAGNET_FIRST_TIME':
                 if (topic === 'assemblyline/crane/motor_state' && payload.component === 'magnet' && payload.state === 0) {
-                    console.warn(`Magnet OFF. Starting conveyor 2 continuous movement and resetting cycle.`);
+                    console.warn(`Magnet OFF. Resetting cycle.`);
                     this.fa.automationState = 'FEEDER_ACTIVATING'; // Reset to start new cycle immediately
                     this.blockColor = null; // Reset block color for next cycle
                     this.fa.currentBlockR = 'none';
@@ -201,7 +201,6 @@ class ColorSortingCycle {
                     this.fa.currentBlockB = 'none';
                     this.fa.currentBlockC = 'none';
                     this.fa.updateUiStatus(); // Update UI after resetting values
-                    command_msg = { topic: 'assemblyline/conveyor2/command', payload: { command: "MOVE_CONTINUOUS", value: -100 } }; // Continuous negative movement
                 }
                 break;
 
