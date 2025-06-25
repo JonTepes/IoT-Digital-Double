@@ -1,6 +1,6 @@
 const OBJECT_PRESENT_THRESHOLD = 150; // Objekt je PRISOTEN, če je color_c > te vrednosti
 // Pragovi za zaznavanje barv na podlagi RGB vrednosti
-const BLUE_THRESHOLD_B_MIN = 40; // Minimalna modra komponenta za moder blok
+const BLUE_THRESHOLD_B_MIN = 30; // Minimalna modra komponenta za moder blok
 const BLUE_THRESHOLD_RG_MAX = 75; // Maksimalne rdeče/zelene komponente za moder blok
 const YELLOW_THRESHOLD_RG_MIN = 50; // Minimalne rdeče/zelene komponente za rumen blok
 const YELLOW_THRESHOLD_B_MAX = 45; // Maksimalna modra komponenta za rumen blok
