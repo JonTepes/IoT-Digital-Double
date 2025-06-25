@@ -111,7 +111,7 @@ class ColorSortingCycle {
                     console.warn(`Conveyor at pickup position. Starting crane sequence.`);
                     this.fa.automationState = 'CRANE_MOVING_TO_PICKUP_XY';
                     this.fa.craneMotorStatus = { m0: false, m1: false, m2: true }; // m2 je true, ker se še ne premika
-                    const cmd_m0 = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 0, pos: -35.0 }] }) };
+                    const cmd_m0 = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 0, pos: -30.0 }] }) };
                     const cmd_m1 = { topic: "assemblyline/crane/command", payload: JSON.stringify({ command: "move_all", motors: [{ id: 1, pos: 7.7 }] }) };
                     command_msg = [cmd_m0, cmd_m1]; // Pošljite več ukazov
                 }
