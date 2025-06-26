@@ -14,8 +14,8 @@ const io = new Server(httpServer, {});
 
 const port = config.port;
 
-// Strežite statične datoteke iz imenika digital_double
-app.use(express.static(path.join(__dirname, 'digital_double')));
+// Strežite statične datoteke iz imenika digital_twin
+app.use(express.static(path.join(__dirname, 'digital_twin')));
 
 // MJPG pretočni proxy
 app.get('/camera_stream', async (req, res) => {
@@ -39,7 +39,7 @@ app.get('/camera_stream', async (req, res) => {
 });
 
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'digital_double', 'index.html'));
+  res.sendFile(path.join(__dirname, 'digital_twin', 'index.html'));
 });
 
 const mqttClient = mqtt.connect(config.mqttBrokerUrl);
