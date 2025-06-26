@@ -1,6 +1,6 @@
 # Digitalni Dvojček Avtomatizirane Tovarne
 
-Ta projekt predstavlja digitalni dvojček avtomatizirane tovarne, ki omogoča vizualizacijo in nadzor nad fizičnimi procesi v realnem času. Sistem uporablja MQTT za komunikacijo med digitalnim dvojčkom, strežnikom in fizičnimi napravami (npr. Arduino).
+Ta projekt predstavlja digitalni dvojček avtomatizirane tovarne, ki omogoča vizualizacijo in nadzor nad fizičnimi procesi v realnem času. Sistem uporablja MQTT za komunikacijo med digitalnim dvojčkom, strežnikom in fizičnimi napravami (npr. ESP32).
 
 ## Opis
 
@@ -79,7 +79,7 @@ Na desni strani uporabniškega vmesnika boste našli avtomatizacijske kontrole:
 ## Tehnologije
 
 *   **Backend:** Node.js, Express, MQTT.js, Socket.IO
-*   **Frontend:** HTML, CSS, JavaScript, Three.js, OrbitControls, DragControls, Socket.IO client
+*   **Frontend:** HTML, CSS, JavaScript, Three.js, Socket.IO client
 *   **3D Modeli:** GLB format
 *   **Komunikacija:** MQTT
-*   **Fizični nadzor:** Arduino (koda je v `ArduinoCode/`)
+*   **Fizični nadzor:** Arduino, ESP32-C3 Supermini (koda je v `ArduinoCode/`)
