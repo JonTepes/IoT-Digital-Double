@@ -21,7 +21,6 @@ async loadModel(returnFullGltf = false) { // Dodaj izbirni parameter za vrnitev 
                     this.model = gltf.scene;
                     this.model.name = this.name;
 
-                    // Calculate world position using gridPos or initialGridPos
                     const gridPos = this.config.gridPos || this.config.initialGridPos || { x: 0, y: 0 };
                     const initialWorldPos = this.gridToWorld(gridPos.x, gridPos.y, 0); // Predpostavimo višino 0
                     this.model.position.copy(initialWorldPos);
