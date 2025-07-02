@@ -345,10 +345,8 @@ function setupMenuButtons() {
 }
 
 // --- Publish MQTT Message via Socket.IO ---
-// This function is now primarily for manual controls, as automation commands are server-side.
 function publishMqttMessage(topic, message) {
     if (socket && socket.connected) {
-        // For manual controls, we still send to the server to publish via MQTT
         socket.emit('publish_mqtt', { topic: topic, message: JSON.stringify(message) });
         console.log(`Emitted 'publish_mqtt' to server for topic ${topic}: ${JSON.stringify(message)}`);
     } else {

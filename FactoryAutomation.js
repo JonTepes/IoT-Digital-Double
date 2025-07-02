@@ -64,7 +64,7 @@ class FactoryAutomation {
         console.log("System STOP command received. Halting all motors.");
         this.updateUiStatus();
 
-        // Pošljite ukaze STOP za VSE naprave
+        // Pošlji ukaze STOP za VSE naprave
         this.publishMqttCommand("assemblyline/crane/command", "STOP 0");
         this.publishMqttCommand("assemblyline/crane/command", "STOP 1");
         this.publishMqttCommand("assemblyline/crane/command", "STOP 2");

@@ -27,9 +27,9 @@ const float DEGREES_PER_STEP = DEGREES_PER_REVOLUTION / STEPS_PER_REVOLUTION;
 // --- MQTT ---
 const char* mqttServer = "192.168.1.32";
 const int mqttPort = 1883;
-const char* mqttClientId = "esp32-crane-m0-consolidated"; // Konsolidiran izhod
+const char* mqttClientId = "esp32-crane-m0-consolidated";
 const char* commandTopic = "assemblyline/crane/command";
-const char* motorStateTopic = "assemblyline/crane/motor_state"; // Enotna izhodna tema
+const char* motorStateTopic = "assemblyline/crane/motor_state"; // izhodna tema
 
 WiFiClient espClient;
 PubSubClient mqttClient(espClient);
@@ -209,7 +209,7 @@ void publishMotorStates() {
     doc0["motor"] = MOTOR_ID;
     doc0["stepper_pos_deg"] = round(internalStepperDegrees * 10.0)/10.0;
 
-    // Poročajte o stanju na podlagi aktivnosti krmilne zanke in napake
+    // Porocanje o stanju na podlagi aktivnosti krmilne zanke in napake
     if (g_controlLoopActive) {
         float error = g_targetPotAngleDegrees - g_controlPotAngleDegrees;
         float absError = abs(error);
