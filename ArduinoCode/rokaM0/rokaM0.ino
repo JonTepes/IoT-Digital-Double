@@ -57,7 +57,6 @@ const float ANGLE_TOLERANCE = 2.5f;
 
 const float KP_GAIN = 5.0f; // Proportional gain for speed control (degrees/sec per degree of error)
 const float MAX_MOTOR_SPEED_DEGREES_PER_SEC = 390.0f; // Max speed in degrees/sec
-const float MIN_MOTOR_SPEED_DEGREES_PER_SEC = 10.0f; // Min speed in degrees/sec (to avoid stalling)
 const float MOTOR_DIRECTION_FACTOR = 1.0f; // Prilagodite, če je treba smer motorja obrniti
 
 void setupWifi();
@@ -92,29 +91,22 @@ void loop() {
         float error = g_targetPotAngleDegrees - g_controlPotAngleDegrees;
         float absError = abs(error);
 
-        if (absError > ANGLE_TOLERANCE) {
-            // Proporcionalni nadzor: hitrost je sorazmerna z napako
-            float desiredSpeedDegreesPerSec = error * KP_GAIN;
+        // Proportional control: speed is proportional to the error
+        float desiredSpeedDegreesPerSec = error * KP_GAIN;
 
-            // Omejite hitrost znotraj min/max omejitev
-            if (abs(desiredSpeedDegreesPerSec) > MAX_MOTOR_SPEED_DEGREES_PER_SEC) {
-                desiredSpeedDegreesPerSec = copysign(MAX_MOTOR_SPEED_DEGREES_PER_SEC, desiredSpeedDegreesPerSec);
-            } else if (abs(desiredSpeedDegreesPerSec) < MIN_MOTOR_SPEED_DEGREES_PER_SEC) {
-                // Uporabite minimalno hitrost le, če obstaja pomembna napaka, da se izognete mikro-premikom
-                if (absError > (ANGLE_TOLERANCE / 2.0f)) { // Majhna histereza
-                    desiredSpeedDegreesPerSec = copysign(MIN_MOTOR_SPEED_DEGREES_PER_SEC, desiredSpeedDegreesPerSec);
-                } else {
-                    desiredSpeedDegreesPerSec = 0; // Ustavite, če je napaka zelo majhna
-                }
-            }
-
-            // Pretvori želeno hitrost iz stopinj/sek v korake/sek
-            float desiredSpeedStepsPerSec = desiredSpeedDegreesPerSec * STEPS_PER_DEGREE * MOTOR_DIRECTION_FACTOR;
-            stepper0.setSpeed(desiredSpeedStepsPerSec);
-        } else {
-            // Within tolerance, stop the motor
-            stepper0.setSpeed(0);
+        // Limit speed within max limits
+        if (abs(desiredSpeedDegreesPerSec) > MAX_MOTOR_SPEED_DEGREES_PER_SEC) {
+            desiredSpeedDegreesPerSec = copysign(MAX_MOTOR_SPEED_DEGREES_PER_SEC, desiredSpeedDegreesPerSec);
         }
+
+        // If error is very small, stop the motor to prevent micro-movements
+        if (absError <= ANGLE_TOLERANCE / 4.0f) { // Use a smaller tolerance for stopping
+            desiredSpeedDegreesPerSec = 0;
+        }
+
+        // Convert desired speed from degrees/sec to steps/sec
+        float desiredSpeedStepsPerSec = desiredSpeedDegreesPerSec * STEPS_PER_DEGREE * MOTOR_DIRECTION_FACTOR;
+        stepper0.setSpeed(desiredSpeedStepsPerSec);
     } else {
         // Krmilna zanka ni aktivna, zagotovite, da je motor ustavljen
         stepper0.setSpeed(0);
@@ -199,7 +191,7 @@ void mqttCallback(char* topic, byte* payload, unsigned int length) {
 void publishMotorStates() {
     if (!mqttClient.connected()) return;
 
-    // Povečana velikost JSON dokumenta za podatke potenciometra
+    // velikost JSON dokumenta za podatke potenciometra
     StaticJsonDocument<250> doc0;
     char jsonBuffer[250];
 
@@ -209,17 +201,17 @@ void publishMotorStates() {
     doc0["motor"] = MOTOR_ID;
     doc0["stepper_pos_deg"] = round(internalStepperDegrees * 10.0)/10.0;
 
-    // Porocanje o stanju na podlagi aktivnosti krmilne zanke in napake
+    // Report state based on control loop activity and error
     if (g_controlLoopActive) {
         float error = g_targetPotAngleDegrees - g_controlPotAngleDegrees;
         float absError = abs(error);
-        if (absError <= ANGLE_TOLERANCE) {
-            doc0["state"] = "HOLDING";
+        if (absError <= ANGLE_TOLERANCE / 4.0f) { // Use the same smaller tolerance for reporting "IDLE"
+            doc0["state"] = "IDLE"; // Motor is effectively stopped at target
         } else {
             doc0["state"] = "MOVING";
         }
     } else {
-        doc0["state"] = "IDLE";
+        doc0["state"] = "IDLE"; // Control loop not active, motor is idle
     }
 
     doc0["target_pot_angle"] = round(g_targetPotAngleDegrees * 10.0)/10.0;

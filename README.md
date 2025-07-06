@@ -20,10 +20,10 @@ Cilj projekta je ustvariti virtualno repliko proizvodne linije, kjer lahko upora
 *   `server.js`: Glavni strežnik Node.js, ki upravlja spletni strežnik, Socket.IO in MQTT komunikacijo.
 *   `FactoryAutomation.js`: Vsebuje glavno logiko avtomatizacije tovarne, upravlja stanja sistema in delegira naloge avtomatizacijskim programom.
 *   `config.js`: Konfiguracijska datoteka za MQTT posrednika, vrata strežnika in URL kamere.
-*   `digital_double/`: Vsebuje datoteke za 3D vizualizacijo digitalnega dvojčka (HTML, JavaScript, 3D modeli).
-    *   `digital_double/main.js`: Glavna logika Three.js za prikaz scene, interakcijo in povezavo s strežnikom.
-    *   `digital_double/FactoryManager.js`: Upravlja nalaganje in posodabljanje 3D modelov strojev.
-    *   `digital_double/models/`: Vsebuje 3D modele strojev (GLB format).
+*   `digital_twin/`: Vsebuje datoteke za 3D vizualizacijo digitalnega dvojčka (HTML, JavaScript, 3D modeli).
+    *   `digital_twin/main.js`: Glavna logika Three.js za prikaz scene, interakcijo in povezavo s strežnikom.
+    *   `digital_twin/FactoryManager.js`: Upravlja nalaganje in posodabljanje 3D modelov strojev.
+    *   `digital_twin/models/`: Vsebuje 3D modele strojev (GLB format).
 *   `automation_programs/`: Vsebuje različne avtomatizacijske programe.
     *   `automation_programs/BasicCycle.js`: Osnovni avtomatizacijski cikel.
     *   `automation_programs/ColorSortingCycle.js`: Avtomatizacijski cikel za sortiranje barvnih blokov.

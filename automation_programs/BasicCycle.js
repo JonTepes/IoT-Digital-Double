@@ -81,7 +81,7 @@ class BasicCycle {
             case 'CRANE_MOVING_TO_PICKUP_XY':
                 if (topic === 'assemblyline/crane/motor_state') {
                     if (payload.motor === 0 || payload.motor === 1) {
-                        if (payload.state === 'IDLE' || payload.state === 'HOLDING') {
+                        if (payload.state === 'IDLE') {
                             this.fa.craneMotorStatus[`m${payload.motor}`] = true;
                         }
                     }
@@ -123,7 +123,7 @@ class BasicCycle {
             case 'CRANE_MOVING_TO_DROPOFF_XY':
                 if (topic === 'assemblyline/crane/motor_state') {
                     if (payload.motor === 0 || payload.motor === 1) {
-                        if (payload.state === 'IDLE' || payload.state === 'HOLDING') {
+                        if (payload.state === 'IDLE') {
                             this.fa.craneMotorStatus[`m${payload.motor}`] = true;
                         }
                     }
