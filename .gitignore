@@ -4,3 +4,5 @@ digital_twin/config.js
 ArduinoCode/credentials.h
 ArduinoCode/*/credentials.h
 node_modules/
+
+interesting_code_parts.txt

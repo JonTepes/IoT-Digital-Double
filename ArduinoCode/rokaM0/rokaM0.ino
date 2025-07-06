@@ -91,24 +91,25 @@ void loop() {
         float error = g_targetPotAngleDegrees - g_controlPotAngleDegrees;
         float absError = abs(error);
 
-        // Proportional control: speed is proportional to the error
+        // hitrost se spreminja glede an oddaljenost od tarče
         float desiredSpeedDegreesPerSec = error * KP_GAIN;
 
-        // Limit speed within max limits
+        // Poskrbimo za maksimalno hitrost
         if (abs(desiredSpeedDegreesPerSec) > MAX_MOTOR_SPEED_DEGREES_PER_SEC) {
             desiredSpeedDegreesPerSec = copysign(MAX_MOTOR_SPEED_DEGREES_PER_SEC, desiredSpeedDegreesPerSec);
         }
 
-        // If error is very small, stop the motor to prevent micro-movements
-        if (absError <= ANGLE_TOLERANCE / 4.0f) { // Use a smaller tolerance for stopping
+        // Če je izmerjena pozicija zelo blizu tarči, se neha premikati 
+        // (to prepreči neskončno "lovljenje" točne pozicije)
+        if (absError <= ANGLE_TOLERANCE / 4.0f) {
             desiredSpeedDegreesPerSec = 0;
         }
 
-        // Convert desired speed from degrees/sec to steps/sec
+        // Pretvorba iz stopinj na sekundo v korak na sekundo
         float desiredSpeedStepsPerSec = desiredSpeedDegreesPerSec * STEPS_PER_DEGREE * MOTOR_DIRECTION_FACTOR;
         stepper0.setSpeed(desiredSpeedStepsPerSec);
     } else {
-        // Krmilna zanka ni aktivna, zagotovite, da je motor ustavljen
+        // Če krmilna zanka ni aktivna, zagotovimo da je motor ustavljen
         stepper0.setSpeed(0);
     }
 
