@@ -93,6 +93,36 @@
         .machine-control-panel button:hover {
             background-color: #218838;
         }
+        .color-sensor-display {
+            display: none; /* Hidden by default, JS will change to flex */
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 5px;
+            margin-top: 5px;
+            border-top: 1px solid #eee;
+            padding-top: 5px;
+        }
+        .color-sensor-display h4 { /* To ensure the heading is not part of the flex row */
+            width: 100%;
+            margin-bottom: 5px;
+        }
+        .color-sensor-display > div {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+        }
+        .color-sensor-display label {
+            width: auto;
+            min-width: 15px;
+            text-align: right;
+            margin-right: 0px;
+        }
+        .color-sensor-display .slider-value-display {
+            width: auto;
+            min-width: 25px;
+            text-align: left;
+            white-space: nowrap;
+        }
         #sidebar {
             flex: 1; /* Stranska vrstica zavzame 1 del prostora */
             background-color: #f0f0f0;
@@ -212,7 +242,7 @@
             </div>
 
             <!-- Prikaz barvnega senzorja (sprva skrito) -->
-            <div class="color-sensor-display" style="display: none; margin-top: 5px; border-top: 1px solid #eee; padding-top: 5px;">
+            <div class="color-sensor-display">
                 <h4>Barvni senzor:</h4>
                 <div>
                     <label>R:</label>

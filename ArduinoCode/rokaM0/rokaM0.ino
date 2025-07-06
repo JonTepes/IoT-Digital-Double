@@ -53,9 +53,9 @@ const float ANGLE_QUANTIZATION_STEP = 2.5f;
 
 float g_targetPotAngleDegrees = 0.0f;
 bool g_controlLoopActive = false;
-const float ANGLE_TOLERANCE = 2.5f;
+const float ANGLE_TOLERANCE = 1.0f;
 
-const float KP_GAIN = 2.0f; // Proportional gain for speed control (degrees/sec per degree of error)
+const float KP_GAIN = 1.0f; // Proportional gain for speed control (degrees/sec per degree of error)
 const float MAX_MOTOR_SPEED_DEGREES_PER_SEC = 390.0f; // Max speed in degrees/sec
 const float MOTOR_DIRECTION_FACTOR = 1.0f; // Prilagodite, če je treba smer motorja obrniti
 
