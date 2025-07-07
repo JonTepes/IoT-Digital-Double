@@ -82,4 +82,4 @@ Na desni strani uporabniškega vmesnika boste našli avtomatizacijske kontrole:
 *   **Frontend:** HTML, CSS, JavaScript, Three.js, Socket.IO client
 *   **3D Modeli:** GLB format
 *   **Komunikacija:** MQTT
-*   **Fizični nadzor:** Arduino, ESP32-C3 Supermini (koda je v `ArduinoCode/`)
+*   **Fizični nadzor:** ESP32-C3 Supermini (koda je v `ArduinoCode/`)
