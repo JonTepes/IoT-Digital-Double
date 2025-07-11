@@ -612,8 +612,8 @@ function setupMachineControlPanel() {
                             const now = new Date();
                             const timeLabel = now.toLocaleTimeString(); // e.g., "10:30:45 AM"
 
-                            // Keep only the last 20 data points for a scrolling effect
-                            const maxDataPoints = 20;
+                            // Keep only the last 50 data points for a scrolling effect
+                            const maxDataPoints = 50;
                             if (chart.data.labels.length >= maxDataPoints) {
                                 chart.data.labels.shift();
                                 chart.data.datasets[0].data.shift();
