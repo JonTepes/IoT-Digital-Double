@@ -4,6 +4,10 @@ import { DragControls } from 'three/addons/controls/DragControls.js'; // Uvoz Dr
 import { FactoryManager } from './FactoryManager.js'; // Uvoz upravitelja
 import { factoryLayout } from './FactoryLayout.js'; // Uvoz konfiguracije postavitve
 import { io } from "socket.io-client"; // Import Socket.IO client
+import { Chart, registerables } from 'chart.js'; // NEW: Import Chart.js
+import 'chartjs-adapter-date-fns'; // NEW: Import date-fns adapter for time scale
+
+Chart.register(...registerables); // NEW: Register all Chart.js components
 
 console.log("Script starting...");
 
@@ -554,8 +558,11 @@ function setupMachineControlPanel() {
                         console.warn(`Crane ${machine.name} has no control topic defined.`);
                     }
                 });
-            }
 
+                // NEW: Setup the M0 chart for the crane
+                setupCraneM0Chart(panel, machine);
+            }
+ 
             controlsContentDiv.appendChild(panel);
             machineControlsContainer.style.display = 'block'; // Show the control panel
             currentMachineControlPanel = panel;
@@ -564,11 +571,104 @@ function setupMachineControlPanel() {
             hideMachineControls();
         }
     }
-
+ 
     function hideMachineControls() {
         machineControlsContainer.style.display = 'none';
         controlsContentDiv.innerHTML = '';
         currentMachineControlPanel = null;
+    }
+}
+
+// NEW: Function to set up the Crane M0 chart
+function setupCraneM0Chart(cranePanelElement, machine) {
+    const m0ChartCanvas = cranePanelElement.querySelector('.crane-m0-chart');
+    if (!m0ChartCanvas) {
+        console.error("Crane M0 chart canvas not found!");
+        return;
+    }
+
+    // Data structure to hold M0 values and timestamps for the graph
+    const m0ChartData = {
+        labels: [], // Timestamps
+        datasets: [{
+            label: 'Crane M0 Angle (°)',
+            data: [], // M0 angle values
+            borderColor: 'rgb(75, 192, 192)',
+            backgroundColor: 'rgba(75, 192, 192, 0.2)',
+            tension: 0.1,
+            fill: false
+        }]
+    };
+
+    // Initialize the chart
+    const m0Chart = new Chart(m0ChartCanvas, {
+        type: 'line',
+        data: m0ChartData,
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    type: 'time',
+                    time: {
+                        unit: 'second',
+                        displayFormats: {
+                            second: 'HH:mm:ss'
+                        }
+                    },
+                    title: {
+                        display: true,
+                        text: 'Time'
+                    }
+                },
+                y: {
+                    min: -180,
+                    max: 180,
+                    title: {
+                        display: true,
+                        text: 'Angle (°)'
+                    }
+                }
+            },
+            animation: false // Disable animation for real-time updates
+        }
+    });
+
+    // Function to update the chart
+    function updateM0Chart(newValue) {
+        const now = Date.now(); // Current timestamp
+
+        // Add new data point
+        m0ChartData.labels.push(now);
+        m0ChartData.datasets[0].data.push(newValue);
+
+        // Remove data points older than 10 seconds
+        const tenSecondsAgo = now - 10000; // 10 seconds in milliseconds
+        while (m0ChartData.labels.length > 0 && m0ChartData.labels[0] < tenSecondsAgo) {
+            m0ChartData.labels.shift();
+            m0ChartData.datasets[0].data.shift();
+        }
+
+        m0Chart.update(); // Redraw the chart
+    }
+
+    // Attach the update function to the machine object for external calls (e.g., MQTT updates)
+    machine.onM0AngleUpdate = (angle) => {
+        updateM0Chart(angle);
+    };
+
+    // Also update the chart when the slider is manually moved
+    const m0Slider = cranePanelElement.querySelector('.crane-m0-slider');
+    if (m0Slider) {
+        m0Slider.addEventListener('input', () => {
+            const value = parseFloat(m0Slider.value);
+            updateM0Chart(value);
+        });
+    }
+
+    // Initial update with current value if available
+    if (machine.currentMotorPositions && machine.currentMotorPositions.m0 !== undefined) {
+        updateM0Chart(machine.currentMotorPositions.m0);
     }
 }
 

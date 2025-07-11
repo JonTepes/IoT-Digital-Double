@@ -73,6 +73,9 @@ export class Crane extends BaseMachine {
                             const rotationRadians = THREE.MathUtils.degToRad(positionValue);
                             this.motor0.rotation.y = this.initialRotationM0 - rotationRadians;
                             this.currentMotorPositions.m0 = positionValue; // Posodobi trenutni položaj
+                            if (typeof this.onM0AngleUpdate === 'function') { // NEW: Call update function
+                                this.onM0AngleUpdate(positionValue);
+                            }
                         }
                         break;
                     case 1: // Linearno gibanje 1 (horizontalna roka) - Predpostavlja gibanje po osi Z
@@ -113,13 +116,16 @@ export class Crane extends BaseMachine {
                 message.motors.forEach(motorCmd => {
                     const motorIndex = motorCmd.id;
                     const positionValue = motorCmd.pos;
-
+ 
                     switch (motorIndex) {
                         case 0:
                             if (this.motor0) {
                                 const rotationRadians = THREE.MathUtils.degToRad(positionValue);
                                 this.motor0.rotation.y = this.initialRotationM0 - rotationRadians;
                                 this.currentMotorPositions.m0 = positionValue;
+                                if (typeof this.onM0AngleUpdate === 'function') { // NEW: Call update function
+                                    this.onM0AngleUpdate(positionValue);
+                                }
                             }
                             break;
                         case 1:
