@@ -48,7 +48,7 @@ float g_controlPotAngleDegrees = 0.0f;
 float g_reportedPotAngleDegrees = 0.0f;
 
 // For averaging potentiometer readings
-const int NUM_READINGS_TO_AVERAGE = 10;
+const int NUM_READINGS_TO_AVERAGE = 30;
 int g_adcReadings[NUM_READINGS_TO_AVERAGE];
 int g_adcReadingsIndex = 0;
 bool g_adcBufferFilled = false;
