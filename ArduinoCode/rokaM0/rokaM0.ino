@@ -44,11 +44,15 @@ const float DEGREES_PER_ADC_TICK = (ANGLE_AT_NINETY_DEGREES_POINT - ANGLE_AT_ZER
 
 int g_lastRawAdcValue = 0;
 float g_smoothedAdcValue = 0.0;
-bool g_firstAdcReading = true;
 float g_controlPotAngleDegrees = 0.0f;
 float g_reportedPotAngleDegrees = 0.0f;
 
-const float ADC_SMOOTHING_ALPHA = 0.05f;
+// For averaging potentiometer readings
+const int NUM_READINGS_TO_AVERAGE = 10;
+int g_adcReadings[NUM_READINGS_TO_AVERAGE];
+int g_adcReadingsIndex = 0;
+bool g_adcBufferFilled = false;
+
 const float ANGLE_QUANTIZATION_STEP = 0.5f;
 
 float g_targetPotAngleDegrees = 0.0f;
@@ -101,7 +105,7 @@ void loop() {
 
         // Če je izmerjena pozicija zelo blizu tarči, se neha premikati 
         // (to prepreči neskončno "lovljenje" točne pozicije)
-        if (absError <= ANGLE_TOLERANCE / 4.0f) {
+        if (absError <= ANGLE_TOLERANCE) {
             desiredSpeedDegreesPerSec = 0;
         }
 
@@ -124,12 +128,26 @@ void loop() {
 
 void updatePotentiometerAngles() {
     g_lastRawAdcValue = analogRead(POTENTIOMETER_PIN);
-    if (g_firstAdcReading) {
-        g_smoothedAdcValue = g_lastRawAdcValue;
-        g_firstAdcReading = false;
-    } else {
-        g_smoothedAdcValue = (ADC_SMOOTHING_ALPHA * g_lastRawAdcValue) + ((1.0f - ADC_SMOOTHING_ALPHA) * g_smoothedAdcValue);
+
+    // Store the new reading in the buffer
+    g_adcReadings[g_adcReadingsIndex] = g_lastRawAdcValue;
+    g_adcReadingsIndex = (g_adcReadingsIndex + 1) % NUM_READINGS_TO_AVERAGE;
+
+    // If the buffer is not yet filled, only average the readings collected so far
+    if (!g_adcBufferFilled && g_adcReadingsIndex == 0) {
+        g_adcBufferFilled = true;
     }
+
+    // Calculate the sum of readings in the buffer
+    long sumReadings = 0;
+    int count = g_adcBufferFilled ? NUM_READINGS_TO_AVERAGE : g_adcReadingsIndex;
+    for (int i = 0; i < count; i++) {
+        sumReadings += g_adcReadings[i];
+    }
+
+    // Calculate the average
+    g_smoothedAdcValue = (float)sumReadings / count;
+
     g_controlPotAngleDegrees = (g_smoothedAdcValue - (float)ADC_AT_ZERO_DEGREES) * DEGREES_PER_ADC_TICK + ANGLE_AT_ZERO_DEGREES_POINT;
     g_reportedPotAngleDegrees = round(g_controlPotAngleDegrees / ANGLE_QUANTIZATION_STEP) * ANGLE_QUANTIZATION_STEP;
 }
@@ -206,7 +224,7 @@ void publishMotorStates() {
     if (g_controlLoopActive) {
         float error = g_targetPotAngleDegrees - g_controlPotAngleDegrees;
         float absError = abs(error);
-        if (absError <= ANGLE_TOLERANCE / 4.0f) { // Use the same smaller tolerance for reporting "IDLE"
+        if (absError <= ANGLE_TOLERANCE) { // Use the same smaller tolerance for reporting "IDLE"
             doc0["state"] = "IDLE"; // Motor is effectively stopped at target
         } else {
             doc0["state"] = "MOVING";
