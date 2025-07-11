@@ -49,7 +49,7 @@ float g_controlPotAngleDegrees = 0.0f;
 float g_reportedPotAngleDegrees = 0.0f;
 
 const float ADC_SMOOTHING_ALPHA = 0.05f;
-const float ANGLE_QUANTIZATION_STEP = 2.5f;
+const float ANGLE_QUANTIZATION_STEP = 0.5f;
 
 float g_targetPotAngleDegrees = 0.0f;
 bool g_controlLoopActive = false;
