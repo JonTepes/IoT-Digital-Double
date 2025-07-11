@@ -106,7 +106,8 @@ let clickOffsetFromRoot_world = new THREE.Vector3(); // Svetovni odmik od izvora
 let conveyorCount = 0; // Števec za unikatna imena tekočih trakov
 let dragControlsInstanceId = 0; // Števec za instance DragControls za odpravljanje napak
 let craneCount = 0;    // Števec za unikatna imena dvigal
- 
+let craneCharts = new Map(); // Map to store Chart.js instances for cranes
+
 const socket = io();
  
 // Počakaj, da se DOM v celoti naloži, preden se izvede glavna logika
@@ -405,8 +406,19 @@ function setupMachineControlPanel() {
             const oldMachineName = currentMachineControlPanel.dataset.machineName;
             if (oldMachineName) {
                 const oldMachine = factoryManager.getMachineByName(oldMachineName);
-                if (oldMachine && oldMachine.config.type === 'Conveyor') {
-                    oldMachine.onColorDataUpdate = null; // Deregister callback
+                if (oldMachine) {
+                    if (oldMachine.config.type === 'Conveyor') {
+                        oldMachine.onColorDataUpdate = null; // Deregister callback
+                    } else if (oldMachine.config.type === 'Crane') {
+                        // Deregister crane m0 update callback
+                        oldMachine.onM0Update = null;
+                        // Destroy the Chart.js instance if it exists
+                        const chartInstance = craneCharts.get(oldMachine.name);
+                        if (chartInstance) {
+                            chartInstance.destroy();
+                            craneCharts.delete(oldMachine.name);
+                        }
+                    }
                 }
             }
             currentMachineControlPanel.remove();
@@ -554,16 +566,79 @@ function setupMachineControlPanel() {
                         console.warn(`Crane ${machine.name} has no control topic defined.`);
                     }
                 });
-            }
 
-            controlsContentDiv.appendChild(panel);
-            machineControlsContainer.style.display = 'block'; // Show the control panel
-            currentMachineControlPanel = panel;
-        } else {
-            console.warn(`No control template found for machine type: ${machine.config.type}`);
-            hideMachineControls();
-        }
-    }
+                // Chart.js integration for Crane M0
+                const m0ChartCanvas = panel.querySelector('.crane-m0-chart');
+                if (m0ChartCanvas) {
+                    const ctx = m0ChartCanvas.getContext('2d');
+                    const m0Chart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: [], // Time labels
+                            datasets: [{
+                                label: 'Motor 0 (stopinje)',
+                                data: [], // M0 values
+                                borderColor: 'rgb(75, 192, 192)',
+                                tension: 0.1,
+                                fill: false
+                            }]
+                        },
+                        options: {
+                            animation: false, // Disable animation for real-time updates
+                            scales: {
+                                x: {
+                                    title: {
+                                        display: true,
+                                        text: 'Čas'
+                                    }
+                                },
+                                y: {
+                                    title: {
+                                        display: true,
+                                        text: 'Stopinje'
+                                    },
+                                    min: -180,
+                                    max: 180
+                                }
+                            }
+                        }
+                    });
+                    craneCharts.set(machine.name, m0Chart);
+
+                    // Register callback for m0 data updates
+                    machine.onM0Update = (m0Value) => {
+                        const chart = craneCharts.get(machine.name);
+                        if (chart) {
+                            const now = new Date();
+                            const timeLabel = now.toLocaleTimeString(); // e.g., "10:30:45 AM"
+
+                            // Keep only the last 20 data points for a scrolling effect
+                            const maxDataPoints = 20;
+                            if (chart.data.labels.length >= maxDataPoints) {
+                                chart.data.labels.shift();
+                                chart.data.datasets[0].data.shift();
+                            }
+
+                            chart.data.labels.push(timeLabel);
+                            chart.data.datasets[0].data.push(m0Value);
+                            chart.update();
+                        }
+                    };
+                    // Immediately update with current data if available
+                    machine.onM0Update(machine.currentMotorPositions.m0);
+                } else {
+                    console.warn(`Crane ${machine.name}: M0 chart canvas not found.`);
+                }
+            }
+ 
+             controlsContentDiv.appendChild(panel);
+             machineControlsContainer.style.display = 'block'; // Show the control panel
+             currentMachineControlPanel = panel;
+         } else {
+             console.warn(`No control template found for machine type: ${machine.config.type}`);
+             hideMachineControls();
+         }
+     }
 
     function hideMachineControls() {
         machineControlsContainer.style.display = 'none';

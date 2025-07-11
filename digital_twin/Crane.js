@@ -17,6 +17,7 @@ export class Crane extends BaseMachine {
         this.initialPositionM1 = new THREE.Vector3();
         this.initialPositionM2 = new THREE.Vector3();
         this.currentMotorPositions = { m0: 0, m1: 0, m2: 0 }; // Lastnost za shranjevanje trenutnih položajev motorjev
+        this.onM0Update = null; // Callback for M0 updates
     }
 
     async loadModel() {
@@ -73,6 +74,9 @@ export class Crane extends BaseMachine {
                             const rotationRadians = THREE.MathUtils.degToRad(positionValue);
                             this.motor0.rotation.y = this.initialRotationM0 - rotationRadians;
                             this.currentMotorPositions.m0 = positionValue; // Posodobi trenutni položaj
+                            if (this.onM0Update) {
+                                this.onM0Update(positionValue);
+                            }
                         }
                         break;
                     case 1: // Linearno gibanje 1 (horizontalna roka) - Predpostavlja gibanje po osi Z
@@ -120,6 +124,9 @@ export class Crane extends BaseMachine {
                                 const rotationRadians = THREE.MathUtils.degToRad(positionValue);
                                 this.motor0.rotation.y = this.initialRotationM0 - rotationRadians;
                                 this.currentMotorPositions.m0 = positionValue;
+                                if (this.onM0Update) {
+                                    this.onM0Update(positionValue);
+                                }
                             }
                             break;
                         case 1:
