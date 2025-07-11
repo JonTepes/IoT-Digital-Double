@@ -89,26 +89,6 @@ export class Conveyor extends BaseMachine {
                     this.onColorDataUpdate(this.colorData);
                 }
             }
-
-        } else if (topic === this.config.topics?.control) {
-            // Obravnava kontrolnih sporočil, poslanih iz uporabniškega vmesnika
-            if (message.command === 'move' && message.hasOwnProperty('position')) {
-                console.log(`Tekoči trak ${this.name} je prejel ukaz za premik na ${message.position} cm`);
-                // Tukaj bi običajno poslali ta ukaz dejanskemu fizičnemu tekočemu traku
-                // Za zdaj lahko simuliramo premik ali neposredno posodobimo vizualno stanje
-                if (this.animationActions.length > 0) {
-                    this.animationActions.forEach(action => {
-                        if (!action.isRunning()) {
-                            action.play(); // Zaženi animacijo ob ukazu za premik
-                        }
-                    });
-                    // Simuliraj ustavitev po kratki zamudi, če ni dejanske povratne zanke
-                    setTimeout(() => {
-                        this.animationActions.forEach(action => action.stop());
-                        console.log(`Tekoči trak ${this.name} je simuliral ustavitev.`);
-                    }, 2000); // Ustavi po 2 sekundah
-                }
-            }
         }
     }
 

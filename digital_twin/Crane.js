@@ -98,55 +98,6 @@ export class Crane extends BaseMachine {
                         console.warn(`Žerjav ${this.name}: Prejeto sporočilo za neznan indeks motorja ${motorIndex}`);
                 }
             }
-        } else if (topic === this.config.topics?.control) {
-            // Obravnava kontrolnih sporočil, poslanih iz uporabniškega vmesnika
-            if (message.command === 'set_magnet' && message.hasOwnProperty('state')) {
-                const magnetOn = message.state === 1;
-                if (this.magnet) {
-                    const magnetMesh = this.magnet.getObjectByProperty('isMesh', true);
-                    if (magnetMesh && magnetMesh.material) {
-                        if (magnetOn) {
-                            magnetMesh.material.color.set(0xff0000); // Rdeča, ko je magnet vklopljen
-                        } else {
-                            magnetMesh.material.color.set(0x888888); // Siva, ko je magnet izklopljen
-                        }
-                    }
-                }
-                console.log(`Žerjav ${this.name}: Magnet nastavljen na ${magnetOn ? 'ON' : 'OFF'}`);
-            } else if (message.command === 'move_all' && message.hasOwnProperty('motors')) {
-                message.motors.forEach(motorCmd => {
-                    const motorIndex = motorCmd.id;
-                    const positionValue = motorCmd.pos;
-
-                    switch (motorIndex) {
-                        case 0:
-                            if (this.motor0) {
-                                const rotationRadians = THREE.MathUtils.degToRad(positionValue);
-                                this.motor0.rotation.y = this.initialRotationM0 - rotationRadians;
-                                this.currentMotorPositions.m0 = positionValue;
-                                if (this.onM0Update) {
-                                    this.onM0Update(positionValue);
-                                }
-                            }
-                            break;
-                        case 1:
-                            if (this.motor1) {
-                                const positionUnits = positionValue * this.unitsPerCm;
-                                this.motor1.position.z = this.initialPositionM1.z + positionUnits;
-                                this.currentMotorPositions.m1 = positionValue;
-                            }
-                            break;
-                        case 2:
-                            if (this.motor2) {
-                                const positionUnits = positionValue * this.unitsPerCm;
-                                this.motor2.position.y = this.initialPositionM2.y - positionUnits;
-                                this.currentMotorPositions.m2 = positionValue;
-                            }
-                            break;
-                    }
-                });
-                console.log(`Žerjav ${this.name} je prejel ukaz za premik vseh motorjev na:`, this.currentMotorPositions);
-            }
         }
     }
 }
