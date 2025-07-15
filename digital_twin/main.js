@@ -596,7 +596,10 @@ function setupMachineControlPanel() {
 
                 // Chart.js integration for Crane M0, M1, M2
                 const setupMotorChart = (motorIndex, labelUnit, yMin, yMax, chartClass, lastCommandProp, onUpdateProp) => {
-                    const chartCanvas = panel.querySelector(chartClass);
+                    // Find the chart canvas within its specific dropdown content div
+                    const chartContentDiv = panel.querySelector(`#crane-m${motorIndex}-chart-content`);
+                    const chartCanvas = chartContentDiv ? chartContentDiv.querySelector(chartClass) : null;
+
                     if (chartCanvas) {
                         const ctx = chartCanvas.getContext('2d');
                         const chart = new Chart(ctx, {
