@@ -19,16 +19,5 @@ export const factoryLayout = [
         topics: {
             // Primer teme za položaj žerjava
         }
-    },
-    {
-        type: 'Workpiece', // Tip: obdelovanec
-        name: 'block-1',
-        modelPath: 'models/block.glb', // Pot do 3D modela obdelovanca
-        initialGridPos: { x: 5, y: 10 }, // Začetni položaj na mreži
-        // Določi, katere teme nadzorujejo ta obdelovanec
-        controlTopics: {
-            position: "assemblyline/conveyor/state", // Tema, ki zagotavlja podatke o položaju obdelovanca
-            highlight: "assemblyline/crane/motor_state" // Tema, ki nadzoruje osvetlitev/barvo obdelovanca
-        }
     }
 ];
