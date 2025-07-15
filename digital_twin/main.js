@@ -583,19 +583,20 @@ function setupMachineControlPanel() {
                         data: {
                             labels: [], // Time labels
                             datasets: [{
-                                label: 'Motor 0 (stopinje) - MCU',
+                                label: 'Motor 0 (stopinje) - Dejanska vrednost',
                                 data: [], // M0 values from MCU
                                 borderColor: 'rgb(75, 192, 192)',
                                 tension: 0.1,
                                 fill: false
                             },
                             {
-                                label: 'Motor 0 (stopinje) - Ukaz',
+                                label: 'Motor 0 (stopinje) - Željena vrednost',
                                 data: [], // M0 command values
                                 borderColor: 'rgb(255, 99, 132)', // Red color for commands
                                 tension: 0, // Set tension to 0 for straight lines
                                 stepped: true, // Enable stepped line
-                                fill: false
+                                fill: false,
+                                pointRadius: 0 // Remove points from the line
                             }]
                         },
                         options: {
