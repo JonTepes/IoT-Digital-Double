@@ -618,7 +618,8 @@ function setupMachineControlPanel() {
                                 label: 'Motor 0 (stopinje) - Ukaz',
                                 data: [], // M0 command values
                                 borderColor: 'rgb(255, 99, 132)', // Red color for commands
-                                tension: 0.1,
+                                tension: 0, // Set tension to 0 for straight lines
+                                stepped: true, // Enable stepped line
                                 fill: false
                             }]
                         },
@@ -632,7 +633,7 @@ function setupMachineControlPanel() {
                                     }
                                 },
                                 y: {
-                                    title: {
+                                        title: {
                                         display: true,
                                         text: 'Stopinje'
                                     },
@@ -667,13 +668,16 @@ function setupMachineControlPanel() {
                                     label: 'Motor 0 (stopinje) - Ukaz',
                                     data: [],
                                     borderColor: 'rgb(255, 99, 132)',
-                                    tension: 0.1,
+                                    tension: 0,
+                                    stepped: true,
                                     fill: false
                                 });
                             }
-                            // Fill the command dataset with the lastM0Command for all current labels
-                            const commandValue = machine.lastM0Command !== undefined ? machine.lastM0Command : m0Value; // Use m0Value if command not set yet
-                            chart.data.datasets[1].data = new Array(chart.data.labels.length).fill(commandValue);
+                            // Add new command data point, aligning with the latest MCU data point
+                            if (chart.data.labels.length >= maxDataPoints) {
+                                chart.data.datasets[1].data.shift(); // Shift command data
+                            }
+                            chart.data.datasets[1].data.push(machine.lastM0Command !== undefined ? machine.lastM0Command : m0Value);
 
                             chart.update();
                         }
