@@ -678,6 +678,16 @@ function setupMachineControlPanel() {
                 setupMotorChart(1, 'cm', 0, 17.5, '.crane-m1-chart', 'lastM1Command', 'onM1Update');
                 setupMotorChart(2, 'cm', 0, 8.5, '.crane-m2-chart', 'lastM2Command', 'onM2Update');
 
+                // Add event listeners for dropdown buttons
+                panel.querySelectorAll('.chart-dropdown-button').forEach(button => {
+                    button.addEventListener('click', (event) => {
+                        const targetId = event.target.dataset.chartTarget;
+                        const targetContent = panel.querySelector(`#${targetId}`);
+                        if (targetContent) {
+                            targetContent.classList.toggle('show');
+                        }
+                    });
+                });
             }
  
               controlsContentDiv.appendChild(panel);

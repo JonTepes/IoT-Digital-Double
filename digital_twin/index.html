@@ -289,17 +289,23 @@
                 <button class="crane-magnet-on-btn">Magnet ON</button>
                 <button class="crane-magnet-off-btn">Magnet OFF</button>
             </div>
-            <div style="margin-top: 10px; border-top: 1px solid #eee; padding-top: 5px; display: flex; flex-direction: column;">
-                <h4>Graf motorja 0:</h4>
-                <canvas class="crane-m0-chart" width="350" height="400"></canvas>
+            <div class="chart-dropdown-container">
+                <button class="chart-dropdown-button" data-chart-target="crane-m0-chart-content">Graf motorja 0</button>
+                <div id="crane-m0-chart-content" class="chart-dropdown-content">
+                    <canvas class="crane-m0-chart" width="350" height="400"></canvas>
+                </div>
             </div>
-            <div style="margin-top: 10px; border-top: 1px solid #eee; padding-top: 5px; display: flex; flex-direction: column;">
-                <h4>Graf motorja 1:</h4>
-                <canvas class="crane-m1-chart" width="350" height="400"></canvas>
+            <div class="chart-dropdown-container">
+                <button class="chart-dropdown-button" data-chart-target="crane-m1-chart-content">Graf motorja 1</button>
+                <div id="crane-m1-chart-content" class="chart-dropdown-content">
+                    <canvas class="crane-m1-chart" width="350" height="400"></canvas>
+                </div>
             </div>
-            <div style="margin-top: 10px; border-top: 1px solid #eee; padding-top: 5px; display: flex; flex-direction: column;">
-                <h4>Graf motorja 2:</h4>
-                <canvas class="crane-m2-chart" width="350" height="400"></canvas>
+            <div class="chart-dropdown-container">
+                <button class="chart-dropdown-button" data-chart-target="crane-m2-chart-content">Graf motorja 2</button>
+                <div id="crane-m2-chart-content" class="chart-dropdown-content">
+                    <canvas class="crane-m2-chart" width="350" height="400"></canvas>
+                </div>
             </div>
         </div>
     </template>
