@@ -548,31 +548,6 @@ function setupMachineControlPanel() {
                         });
                         // Store the last sent M0 command
                         machine.lastM0Command = m0Pos;
-                        // Trigger an update to the chart to reflect the new command line
-                        // We can call onM0Update with the current MCU value to ensure both lines are redrawn
-                        // Or, if we only want to update the command line, we can do it more directly here.
-                        // For simplicity and to ensure labels are aligned, let's call onM0Update.
-                        // However, onM0Update is for *receiving* MCU data.
-                        // Let's make a separate function or directly update the chart here.
-                        const chart = craneCharts.get(machine.name);
-                        if (chart) {
-                            const maxDataPoints = 50;
-                            const commandValue = machine.lastM0Command;
-
-                            // Ensure the command dataset exists and is the second one
-                            if (chart.data.datasets.length < 2) {
-                                chart.data.datasets.push({
-                                    label: 'Motor 0 (stopinje) - Ukaz',
-                                    data: [],
-                                    borderColor: 'rgb(255, 99, 132)',
-                                    tension: 0.1,
-                                    fill: false
-                                });
-                            }
-                            // Fill the command dataset with the lastM0Command for all current labels
-                            chart.data.datasets[1].data = new Array(chart.data.labels.length).fill(commandValue);
-                            chart.update();
-                        }
                     } else {
                         console.warn(`Crane ${machine.name} has no control topic defined.`);
                     }
