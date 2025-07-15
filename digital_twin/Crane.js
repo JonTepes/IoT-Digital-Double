@@ -18,8 +18,6 @@ export class Crane extends BaseMachine {
         this.initialPositionM2 = new THREE.Vector3();
         this.currentMotorPositions = { m0: 0, m1: 0, m2: 0 }; // Lastnost za shranjevanje trenutnih položajev motorjev
         this.onM0Update = null; // Callback for M0 updates
-        this.onM1Update = null; // Callback for M1 updates
-        this.onM2Update = null; // Callback for M2 updates
     }
 
     async loadModel() {
@@ -86,9 +84,6 @@ export class Crane extends BaseMachine {
                             const positionUnits = positionValue * this.unitsPerCm;
                             this.motor1.position.z = this.initialPositionM1.z + positionUnits;
                             this.currentMotorPositions.m1 = positionValue; // Posodobi trenutni položaj
-                            if (this.onM1Update) {
-                                this.onM1Update(positionValue);
-                            }
                         }
                         break;
                     case 2: // Linearno gibanje 2 (vertikalno dvigalo) - Predpostavlja gibanje po osi Y
@@ -97,9 +92,6 @@ export class Crane extends BaseMachine {
                             // Upoštevaj negativni predznak, če pozitivni cm pomeni premik navzdol v Three.js sistemu z osjo Y navzgor
                             this.motor2.position.y = this.initialPositionM2.y - positionUnits;
                             this.currentMotorPositions.m2 = positionValue; // Posodobi trenutni položaj
-                            if (this.onM2Update) {
-                                this.onM2Update(positionValue);
-                            }
                         }
                         break;
                     default:
