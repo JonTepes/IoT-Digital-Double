@@ -521,6 +521,11 @@ function setupMachineControlPanel() {
                 m2Slider.value = initialMotorPositions.m2;
                 m2Display.innerText = `${initialMotorPositions.m2.toFixed(1)} cm`;
 
+                // Initialize lastM0Command if not already set (e.g., on first display)
+                if (machine.lastM0Command === undefined) {
+                    machine.lastM0Command = initialMotorPositions.m0;
+                }
+
                 m0Slider.addEventListener('input', () => { m0Display.innerText = `${m0Slider.value}°`; });
                 m1Slider.addEventListener('input', () => { m1Display.innerText = `${parseFloat(m1Slider.value).toFixed(1)} cm`; });
                 m2Slider.addEventListener('input', () => { m2Display.innerText = `${parseFloat(m2Slider.value).toFixed(1)} cm`; });
@@ -543,12 +548,16 @@ function setupMachineControlPanel() {
                         });
                         // Store the last sent M0 command
                         machine.lastM0Command = m0Pos;
-                        // Immediately update the chart with the new command value
+                        // Trigger an update to the chart to reflect the new command line
+                        // We can call onM0Update with the current MCU value to ensure both lines are redrawn
+                        // Or, if we only want to update the command line, we can do it more directly here.
+                        // For simplicity and to ensure labels are aligned, let's call onM0Update.
+                        // However, onM0Update is for *receiving* MCU data.
+                        // Let's make a separate function or directly update the chart here.
                         const chart = craneCharts.get(machine.name);
                         if (chart) {
-                            const now = new Date();
-                            const timeLabel = now.toLocaleTimeString();
                             const maxDataPoints = 50;
+                            const commandValue = machine.lastM0Command;
 
                             // Ensure the command dataset exists and is the second one
                             if (chart.data.datasets.length < 2) {
@@ -560,13 +569,8 @@ function setupMachineControlPanel() {
                                     fill: false
                                 });
                             }
-
-                            // Keep only the last 50 data points for a scrolling effect
-                            if (chart.data.labels.length >= maxDataPoints) {
-                                chart.data.datasets[1].data.shift(); // Shift command data
-                            }
-                            chart.data.labels.push(timeLabel); // Add new time label for command
-                            chart.data.datasets[1].data.push(m0Pos); // Add new command data
+                            // Fill the command dataset with the lastM0Command for all current labels
+                            chart.data.datasets[1].data = new Array(chart.data.labels.length).fill(commandValue);
                             chart.update();
                         }
                     } else {
@@ -646,20 +650,36 @@ function setupMachineControlPanel() {
                         if (chart) {
                             const now = new Date();
                             const timeLabel = now.toLocaleTimeString(); // e.g., "10:30:45 AM"
-
-                            // Keep only the last 50 data points for a scrolling effect
                             const maxDataPoints = 50;
+
+                            // Update labels and MCU data (dataset 0)
                             if (chart.data.labels.length >= maxDataPoints) {
                                 chart.data.labels.shift();
                                 chart.data.datasets[0].data.shift();
                             }
-
                             chart.data.labels.push(timeLabel);
                             chart.data.datasets[0].data.push(m0Value);
+
+                            // Update command data (dataset 1)
+                            // Ensure the command dataset exists
+                            if (chart.data.datasets.length < 2) {
+                                chart.data.datasets.push({
+                                    label: 'Motor 0 (stopinje) - Ukaz',
+                                    data: [],
+                                    borderColor: 'rgb(255, 99, 132)',
+                                    tension: 0.1,
+                                    fill: false
+                                });
+                            }
+                            // Fill the command dataset with the lastM0Command for all current labels
+                            const commandValue = machine.lastM0Command !== undefined ? machine.lastM0Command : m0Value; // Use m0Value if command not set yet
+                            chart.data.datasets[1].data = new Array(chart.data.labels.length).fill(commandValue);
+
                             chart.update();
                         }
                     };
                     // Immediately update with current data if available
+                    // This will also initialize the command line if lastM0Command is not set
                     machine.onM0Update(machine.currentMotorPositions.m0);
                 } else {
                     console.warn(`Crane ${machine.name}: M0 chart canvas not found.`);
