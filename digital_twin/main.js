@@ -107,6 +107,7 @@ let conveyorCount = 0; // Števec za unikatna imena tekočih trakov
 let dragControlsInstanceId = 0; // Števec za instance DragControls za odpravljanje napak
 let craneCount = 0;    // Števec za unikatna imena dvigal
 let craneCharts = new Map(); // Map to store Chart.js instances for cranes
+let currentCraneChartsPanel = null; // To keep track of the currently displayed crane charts panel
 
 const socket = io();
  
@@ -361,10 +362,12 @@ let currentMachineControlPanel = null; // To keep track of the currently display
 function setupMachineControlPanel() {
     const machineControlsContainer = document.getElementById('machine-controls');
     const controlsContentDiv = document.getElementById('controls-content');
+    const craneChartsContainer = document.getElementById('crane-charts-panel'); // New container for charts
+    const craneChartsContentDiv = document.getElementById('crane-charts-content'); // New content div for charts
     const threejsContainer = document.getElementById('threejs-container');
 
-    if (!machineControlsContainer || !controlsContentDiv || !threejsContainer) {
-        console.error("Missing control panel elements in HTML.");
+    if (!machineControlsContainer || !controlsContentDiv || !craneChartsContainer || !craneChartsContentDiv || !threejsContainer) {
+        console.error("Missing control panel or chart panel elements in HTML.");
         return;
     }
 
@@ -390,11 +393,17 @@ function setupMachineControlPanel() {
                 const machine = factoryManager.getMachineByName(rootMachineModel.name);
                 if (machine) {
                     displayMachineControls(machine);
+                    if (machine.config.type === 'Crane') {
+                        displayCraneCharts(machine);
+                    } else {
+                        hideCraneCharts(); // Hide charts if a non-crane machine is selected
+                    }
                 }
             }
         } else {
-            // Clicked outside any machine, hide controls
+            // Clicked outside any machine, hide all controls
             hideMachineControls();
+            hideCraneCharts();
         }
     });
 
@@ -409,28 +418,8 @@ function setupMachineControlPanel() {
                 if (oldMachine) {
                     if (oldMachine.config.type === 'Conveyor') {
                         oldMachine.onColorDataUpdate = null; // Deregister callback
-                    } else if (oldMachine.config.type === 'Crane') {
-                        // Deregister crane motor update callbacks
-                        oldMachine.onM0Update = null;
-                        oldMachine.onM1Update = null;
-                        oldMachine.onM2Update = null;
-                        // Destroy the Chart.js instances if they exist
-                        const m0ChartInstance = craneCharts.get(`${oldMachine.name}-m0`);
-                        if (m0ChartInstance) {
-                            m0ChartInstance.destroy();
-                            craneCharts.delete(`${oldMachine.name}-m0`);
-                        }
-                        const m1ChartInstance = craneCharts.get(`${oldMachine.name}-m1`);
-                        if (m1ChartInstance) {
-                            m1ChartInstance.destroy();
-                            craneCharts.delete(`${oldMachine.name}-m1`);
-                        }
-                        const m2ChartInstance = craneCharts.get(`${oldMachine.name}-m2`);
-                        if (m2ChartInstance) {
-                            m2ChartInstance.destroy();
-                            craneCharts.delete(`${oldMachine.name}-m2`);
-                        }
                     }
+                    // Crane chart deregistration and destruction is now handled by hideCraneCharts
                 }
             }
             currentMachineControlPanel.remove();
@@ -593,91 +582,6 @@ function setupMachineControlPanel() {
                         console.warn(`Crane ${machine.name} has no control topic defined.`);
                     }
                 });
-
-                // Chart.js integration for Crane M0, M1, M2
-                const setupMotorChart = (motorIndex, labelUnit, yMin, yMax, chartClass, lastCommandProp, onUpdateProp) => {
-                    const chartCanvas = panel.querySelector(chartClass);
-                    if (chartCanvas) {
-                        const ctx = chartCanvas.getContext('2d');
-                        const chart = new Chart(ctx, {
-                            type: 'line',
-                            data: {
-                                labels: [], // Time labels
-                                datasets: [{
-                                    label: `Motor ${motorIndex} (${labelUnit}) - Dejanska vrednost`,
-                                    data: [], // Motor values from MCU
-                                    borderColor: 'rgb(75, 192, 192)',
-                                    tension: 0.1,
-                                    fill: false
-                                },
-                                {
-                                    label: `Motor ${motorIndex} (${labelUnit}) - Željena vrednost`,
-                                    data: [], // Motor command values
-                                    borderColor: 'rgb(255, 99, 132)', // Red color for commands
-                                    tension: 0, // Set tension to 0 for straight lines
-                                    stepped: true, // Enable stepped line
-                                    fill: false,
-                                    pointRadius: 0 // Remove points from the line
-                                }]
-                            },
-                            options: {
-                                animation: false, // Disable animation for real-time updates
-                                scales: {
-                                    x: {
-                                        title: {
-                                            display: true,
-                                            text: 'Čas'
-                                        }
-                                    },
-                                    y: {
-                                        title: {
-                                            display: true,
-                                            text: labelUnit
-                                        },
-                                        min: yMin,
-                                        max: yMax
-                                    }
-                                }
-                            }
-                        });
-                        craneCharts.set(`${machine.name}-m${motorIndex}`, chart);
-
-                        // Register callback for motor data updates
-                        machine[onUpdateProp] = (motorValue) => {
-                            const currentChart = craneCharts.get(`${machine.name}-m${motorIndex}`);
-                            if (currentChart) {
-                                const now = new Date();
-                                const timeLabel = now.toLocaleTimeString(); // e.g., "10:30:45 AM"
-                                const maxDataPoints = 50;
-
-                                // Update labels and MCU data (dataset 0)
-                                if (currentChart.data.labels.length >= maxDataPoints) {
-                                    currentChart.data.labels.shift();
-                                    currentChart.data.datasets[0].data.shift();
-                                }
-                                currentChart.data.labels.push(timeLabel);
-                                currentChart.data.datasets[0].data.push(motorValue);
-
-                                // Update command data (dataset 1)
-                                if (currentChart.data.labels.length >= maxDataPoints) {
-                                    currentChart.data.datasets[1].data.shift(); // Shift command data
-                                }
-                                currentChart.data.datasets[1].data.push(machine[lastCommandProp] !== undefined ? machine[lastCommandProp] : motorValue);
-
-                                currentChart.update();
-                            }
-                        };
-                        // Immediately update with current data if available
-                        machine[onUpdateProp](machine.currentMotorPositions[`m${motorIndex}`]);
-                    } else {
-                        console.warn(`Crane ${machine.name}: M${motorIndex} chart canvas not found.`);
-                    }
-                };
-
-                setupMotorChart(0, 'stopinje', -180, 180, '.crane-m0-chart', 'lastM0Command', 'onM0Update');
-                setupMotorChart(1, 'cm', 0, 17.5, '.crane-m1-chart', 'lastM1Command', 'onM1Update');
-                setupMotorChart(2, 'cm', 0, 8.5, '.crane-m2-chart', 'lastM2Command', 'onM2Update');
-
             }
  
               controlsContentDiv.appendChild(panel);
@@ -693,6 +597,176 @@ function setupMachineControlPanel() {
         machineControlsContainer.style.display = 'none';
         controlsContentDiv.innerHTML = '';
         currentMachineControlPanel = null;
+        // Also hide crane charts when machine controls are hidden
+        hideCraneCharts();
+    }
+
+    function displayCraneCharts(machine) {
+        // Clear previous charts
+        craneChartsContentDiv.innerHTML = '';
+        if (currentCraneChartsPanel) {
+            const oldMachineName = currentCraneChartsPanel.dataset.machineName;
+            if (oldMachineName) {
+                const oldMachine = factoryManager.getMachineByName(oldMachineName);
+                if (oldMachine && oldMachine.config.type === 'Crane') {
+                    // Deregister crane motor update callbacks
+                    oldMachine.onM0Update = null;
+                    oldMachine.onM1Update = null;
+                    oldMachine.onM2Update = null;
+                    // Destroy the Chart.js instances if they exist
+                    const m0ChartInstance = craneCharts.get(`${oldMachine.name}-m0`);
+                    if (m0ChartInstance) {
+                        m0ChartInstance.destroy();
+                        craneCharts.delete(`${oldMachine.name}-m0`);
+                    }
+                    const m1ChartInstance = craneCharts.get(`${oldMachine.name}-m1`);
+                    if (m1ChartInstance) {
+                        m1ChartInstance.destroy();
+                        craneCharts.delete(`${oldMachine.name}-m1`);
+                    }
+                    const m2ChartInstance = craneCharts.get(`${oldMachine.name}-m2`);
+                    if (m2ChartInstance) {
+                        m2ChartInstance.destroy();
+                        craneCharts.delete(`${oldMachine.name}-m2`);
+                    }
+                }
+            }
+            currentCraneChartsPanel.remove();
+            currentCraneChartsPanel = null;
+        }
+
+        const template = document.getElementById('crane-charts-template');
+        if (template) {
+            const clone = document.importNode(template.content, true);
+            const panel = clone.querySelector('.crane-chart-container');
+            panel.dataset.machineName = machine.name;
+            panel.querySelector('.machine-name-display').innerText = machine.name;
+
+            // Chart.js integration for Crane M0, M1, M2
+            const setupMotorChart = (motorIndex, labelUnit, yMin, yMax, chartClass, lastCommandProp, onUpdateProp) => {
+                const chartCanvas = panel.querySelector(chartClass);
+                if (chartCanvas) {
+                    const ctx = chartCanvas.getContext('2d');
+                    const chart = new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: [], // Time labels
+                            datasets: [{
+                                label: `Motor ${motorIndex} (${labelUnit}) - Dejanska vrednost`,
+                                data: [], // Motor values from MCU
+                                borderColor: 'rgb(75, 192, 192)',
+                                tension: 0.1,
+                                fill: false
+                            },
+                            {
+                                label: `Motor ${motorIndex} (${labelUnit}) - Željena vrednost`,
+                                data: [], // Motor command values
+                                borderColor: 'rgb(255, 99, 132)', // Red color for commands
+                                tension: 0, // Set tension to 0 for straight lines
+                                stepped: true, // Enable stepped line
+                                fill: false,
+                                pointRadius: 0 // Remove points from the line
+                            }]
+                        },
+                        options: {
+                            animation: false, // Disable animation for real-time updates
+                            scales: {
+                                x: {
+                                    title: {
+                                        display: true,
+                                        text: 'Čas'
+                                    }
+                                },
+                                y: {
+                                    title: {
+                                        display: true,
+                                        text: labelUnit
+                                    },
+                                    min: yMin,
+                                    max: yMax
+                                }
+                            }
+                        }
+                    });
+                    craneCharts.set(`${machine.name}-m${motorIndex}`, chart);
+
+                    // Register callback for motor data updates
+                    machine[onUpdateProp] = (motorValue) => {
+                        const currentChart = craneCharts.get(`${machine.name}-m${motorIndex}`);
+                        if (currentChart) {
+                            const now = new Date();
+                            const timeLabel = now.toLocaleTimeString(); // e.g., "10:30:45 AM"
+                            const maxDataPoints = 50;
+
+                            // Update labels and MCU data (dataset 0)
+                            if (currentChart.data.labels.length >= maxDataPoints) {
+                                currentChart.data.labels.shift();
+                                currentChart.data.datasets[0].data.shift();
+                            }
+                            currentChart.data.labels.push(timeLabel);
+                            currentChart.data.datasets[0].data.push(motorValue);
+
+                            // Update command data (dataset 1)
+                            if (currentChart.data.labels.length >= maxDataPoints) {
+                                currentChart.data.datasets[1].data.shift(); // Shift command data
+                            }
+                            currentChart.data.datasets[1].data.push(machine[lastCommandProp] !== undefined ? machine[lastCommandProp] : motorValue);
+
+                            currentChart.update();
+                        }
+                    };
+                    // Immediately update with current data if available
+                    machine[onUpdateProp](machine.currentMotorPositions[`m${motorIndex}`]);
+                } else {
+                    console.warn(`Crane ${machine.name}: M${motorIndex} chart canvas not found.`);
+                }
+            };
+
+            setupMotorChart(0, 'stopinje', -180, 180, '.crane-m0-chart', 'lastM0Command', 'onM0Update');
+            setupMotorChart(1, 'cm', 0, 17.5, '.crane-m1-chart', 'lastM1Command', 'onM1Update');
+            setupMotorChart(2, 'cm', 0, 8.5, '.crane-m2-chart', 'lastM2Command', 'onM2Update');
+
+            craneChartsContentDiv.appendChild(panel);
+            craneChartsContainer.style.display = 'block'; // Show the chart panel
+            currentCraneChartsPanel = panel;
+        } else {
+            console.warn(`No crane charts template found.`);
+            hideCraneCharts();
+        }
+    }
+
+    function hideCraneCharts() {
+        craneChartsContainer.style.display = 'none';
+        craneChartsContentDiv.innerHTML = '';
+        if (currentCraneChartsPanel) {
+            const oldMachineName = currentCraneChartsPanel.dataset.machineName;
+            if (oldMachineName) {
+                const oldMachine = factoryManager.getMachineByName(oldMachineName);
+                if (oldMachine && oldMachine.config.type === 'Crane') {
+                    // Deregister crane motor update callbacks
+                    oldMachine.onM0Update = null;
+                    oldMachine.onM1Update = null;
+                    oldMachine.onM2Update = null;
+                    // Destroy the Chart.js instances if they exist
+                    const m0ChartInstance = craneCharts.get(`${oldMachine.name}-m0`);
+                    if (m0ChartInstance) {
+                        m0ChartInstance.destroy();
+                        craneCharts.delete(`${oldMachine.name}-m0`);
+                    }
+                    const m1ChartInstance = craneCharts.get(`${oldMachine.name}-m1`);
+                    if (m1ChartInstance) {
+                        m1ChartInstance.destroy();
+                        craneCharts.delete(`${oldMachine.name}-m1`);
+                    }
+                    const m2ChartInstance = craneCharts.get(`${oldMachine.name}-m2`);
+                    if (m2ChartInstance) {
+                        m2ChartInstance.destroy();
+                        craneCharts.delete(`${oldMachine.name}-m2`);
+                    }
+                }
+            }
+        }
+        currentCraneChartsPanel = null;
     }
 }
 
