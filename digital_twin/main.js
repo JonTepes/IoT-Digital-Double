@@ -541,6 +541,34 @@ function setupMachineControlPanel() {
                                 { id: 2, pos: m2Pos }  // Motor 2 (roka.ino) expects cm
                             ]
                         });
+                        // Store the last sent M0 command
+                        machine.lastM0Command = m0Pos;
+                        // Immediately update the chart with the new command value
+                        const chart = craneCharts.get(machine.name);
+                        if (chart) {
+                            const now = new Date();
+                            const timeLabel = now.toLocaleTimeString();
+                            const maxDataPoints = 50;
+
+                            // Ensure the command dataset exists and is the second one
+                            if (chart.data.datasets.length < 2) {
+                                chart.data.datasets.push({
+                                    label: 'Motor 0 (stopinje) - Ukaz',
+                                    data: [],
+                                    borderColor: 'rgb(255, 99, 132)',
+                                    tension: 0.1,
+                                    fill: false
+                                });
+                            }
+
+                            // Keep only the last 50 data points for a scrolling effect
+                            if (chart.data.labels.length >= maxDataPoints) {
+                                chart.data.datasets[1].data.shift(); // Shift command data
+                            }
+                            chart.data.labels.push(timeLabel); // Add new time label for command
+                            chart.data.datasets[1].data.push(m0Pos); // Add new command data
+                            chart.update();
+                        }
                     } else {
                         console.warn(`Crane ${machine.name} has no control topic defined.`);
                     }
@@ -576,9 +604,16 @@ function setupMachineControlPanel() {
                         data: {
                             labels: [], // Time labels
                             datasets: [{
-                                label: 'Motor 0 (stopinje)',
-                                data: [], // M0 values
+                                label: 'Motor 0 (stopinje) - MCU',
+                                data: [], // M0 values from MCU
                                 borderColor: 'rgb(75, 192, 192)',
+                                tension: 0.1,
+                                fill: false
+                            },
+                            {
+                                label: 'Motor 0 (stopinje) - Ukaz',
+                                data: [], // M0 command values
+                                borderColor: 'rgb(255, 99, 132)', // Red color for commands
                                 tension: 0.1,
                                 fill: false
                             }]
