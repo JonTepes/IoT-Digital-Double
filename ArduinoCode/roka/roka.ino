@@ -38,6 +38,9 @@ const float STEPS_PER_CM = STEPS_PER_MOVEMENT / CM_PER_MOVEMENT; // Steps per cm
 const float CM_PER_STEP = CM_PER_MOVEMENT / STEPS_PER_MOVEMENT; // Cm per step (~0.00175)
 
 // --- WiFi ---
+// Uncomment and fill in your WiFi credentials if not using credentials.h
+// const char* ssid = "YOUR_WIFI_SSID";
+// const char* password = "YOUR_WIFI_PASSWORD";
 #include "credentials.h"
 
 // --- MQTT ---

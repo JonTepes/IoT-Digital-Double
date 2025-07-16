@@ -22,6 +22,9 @@ const float DEGREES_PER_REVOLUTION = 360.0;
 const float STEPS_PER_DEGREE = STEPS_PER_REVOLUTION / DEGREES_PER_REVOLUTION;
 const float DEGREES_PER_STEP = DEGREES_PER_REVOLUTION / STEPS_PER_REVOLUTION;
 
+// Uncomment and fill in your WiFi credentials if not using credentials.h
+// const char* ssid = "YOUR_WIFI_SSID";
+// const char* password = "YOUR_WIFI_PASSWORD";
 #include "credentials.h"
 
 // --- MQTT ---

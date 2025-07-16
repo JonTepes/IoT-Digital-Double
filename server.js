@@ -5,6 +5,12 @@ const mqtt = require('mqtt');
 const fs = require('fs');
 const path = require('path');
 const fetch = require('node-fetch');
+// Uncomment and fill in your configuration if not using config.js
+// const config = {
+//   port: 3000,
+//   cameraStreamUrl: 'http://localhost:8081/?action=stream',
+//   mqttBrokerUrl: 'mqtt://localhost:1883'
+// };
 const config = require('./config');
 const FactoryAutomation = require('./FactoryAutomation'); // Import FactoryAutomation
 
