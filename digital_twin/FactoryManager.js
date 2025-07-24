@@ -149,11 +149,29 @@ export class FactoryManager {
         if (machineInstance && typeof machineInstance.handleMessage === 'function') {
              try {
                 const message = JSON.parse(payloadString);
+                
+                // Special handling for crane command messages to track lastM0Command
+                if (machineInstance.config.type === 'Crane' && topic === machineInstance.config.topics?.control) {
+                    this.trackCraneCommands(machineInstance, message);
+                }
+                
                 machineInstance.handleMessage(topic, message); // Delegiraj obravnavo sporočila
             } catch (e) {
                 console.error(`Spodletelo razčlenjevanje MQTT sporočila na temi ${topic}:`, e, `Vsebina: ${payloadString}`);
             }
         } else {
+        }
+    }
+
+    // Track crane commands to update lastM0Command for chart display
+    trackCraneCommands(craneInstance, message) {
+        if (message.command === 'move_all' && Array.isArray(message.motors)) {
+            // Find motor 0 command in the motors array
+            const m0Command = message.motors.find(motor => motor.id === 0);
+            if (m0Command && m0Command.pos !== undefined) {
+                craneInstance.lastM0Command = m0Command.pos;
+                console.log(`Tracked M0 command for ${craneInstance.name}: ${m0Command.pos}°`);
+            }
         }
     }
 
