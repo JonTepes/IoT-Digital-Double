@@ -1,5 +1,7 @@
 # Digitalni Dvojček Avtomatizirane Tovarne
 
+![Factory Digital Twin Overview](images/factory-overview.png)
+
 Ta projekt predstavlja digitalni dvojček avtomatizirane tovarne, ki omogoča vizualizacijo in nadzor nad fizičnimi procesi v realnem času. Sistem uporablja MQTT za komunikacijo med digitalnim dvojčkom, strežnikom in fizičnimi napravami (npr. ESP32).
 
 ## Opis
